@@ -29,7 +29,8 @@ from typing import Optional
 import numpy as np
 import scipy
 import torch
-from seqeval.metrics import precision_score, recall_score, f1_score
+import seqeval
+from seqeval.metrics import precision_score, recall_score, f1_score, classification_report
 from tensorboardX import SummaryWriter
 from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader, TensorDataset
@@ -41,6 +42,8 @@ from utils_tag import get_labels
 from utils_tag import read_examples_from_file
 import pdb
 import json 
+import pycm
+import pandas as pd
 
 from transformers import (
   AdamW,
@@ -71,6 +74,30 @@ def set_seed(args):
   torch.manual_seed(args.seed)
   if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
+
+def classification_report_csv(report, lang):
+    report_data = []
+    lines = report.split('\n')
+    pdb.set_trace()
+    for line in lines[2:-2]:
+        if line.split() == []:
+          continue
+        row = {}
+        row_data = line.split()
+        if len(row_data) == 6:
+          row_data.remove("avg")
+        row['class'] = row_data[0]
+        
+        try:
+          row['precision'] = float(row_data[1])
+        except:
+          pdb.set_trace()
+        row['recall'] = float(row_data[2])
+        row['f1_score'] = float(row_data[3])
+        row['support'] = float(row_data[4])
+        report_data.append(row)
+    dataframe = pd.DataFrame.from_dict(report_data)
+    dataframe.to_csv(lang+'_report.csv', index = False)
 
 def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix="", lang="en", adap_ids=None, lang2id=None, print_result=True, adapter_weight=None, lang_adapter_names=None, task_name=None, calc_weight_step=0):
   eval_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode=mode, lang=lang, lang2id=lang2id)
@@ -159,24 +186,39 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
+    fout_list = []
+    fpred_list = []
 
     for i in range(out_label_ids.shape[0]):
       for j in range(out_label_ids.shape[1]):
         if out_label_ids[i, j] != pad_token_label_id:
           out_label_list[i].append(label_map[out_label_ids[i][j]])
           preds_list[i].append(label_map[preds[i][j]])
+          fout_list.append(label_map[out_label_ids[i][j]])
+          fpred_list.append(label_map[preds[i][j]])
 
     results = {
       "loss": eval_loss,
       "precision": precision_score(out_label_list, preds_list),
       "recall": recall_score(out_label_list, preds_list),
-      "f1": f1_score(out_label_list, preds_list)
+      "f1": f1_score(out_label_list, preds_list),
+      "macro": f1_score(out_label_list, preds_list,average="macro")
     }
 
+  report = classification_report(out_label_list, preds_list)
+  #pdb.set_trace()
+  classification_report_csv(report,lang)
+  #pdb.set_trace()
   if print_result:
     logger.info("***** Evaluation result %s in %s *****" % (prefix, lang))
     for key in sorted(results.keys()):
       logger.info("  %s = %s", key, str(results[key]))
+
+  with open(lang+"_predictions.txt", "w") as f:
+    for g,p in zip(out_label_list,preds_list):
+      for x,y in zip(g,p):
+        f.write(x+"\t"+y+"\n")
+      f.write("\n")
   return results, preds_list
 
 
@@ -353,7 +395,6 @@ class ModelArguments:
 #   return model, task_name
 
 def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None,config=None):
-  cpg_name = "cpg"
   task_name="ner"
   # pdb.set_trace()
   # load1_= "/".join(load_adapter.split('//')[:-1])+"/"+task_name
@@ -520,8 +561,8 @@ def main():
     #     load_as=language,
     # )
     #pdb.set_trace()
-    #lang_adapter_name = model.load_adapter(language+"/wiki@ukp")
-    lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language+"/")
+    lang_adapter_name = model.load_adapter(language+"/wiki@ukp")
+    #lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language+"/")
     lang_adapter_names.append(lang_adapter_name)
 
   #adapter_setup_ = Fuse('en','hi','ar')

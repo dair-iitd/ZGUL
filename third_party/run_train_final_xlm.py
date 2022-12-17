@@ -616,7 +616,6 @@ def main():
       logging.info('save model')
   # Setup adapters
 
-  cpg_name = "cpg"
   task_name="ner"
   if args.madx2:
     #pdb.set_trace()

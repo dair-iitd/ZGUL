@@ -695,7 +695,7 @@ def main():
     lang_adapter_names.append(lang_adapter_name)
 
   
-  adapter_setup_ = Fuse('en','is','de')
+  adapter_setup_ = Fuse('en','ru','cs')
   model.add_adapter_fusion(adapter_setup_)
   model.add_adapter(task_name, config=task_adapter_config)
   model.train_adapter_fusion_TA([task_name], adapter_setup_)

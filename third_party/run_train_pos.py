@@ -129,6 +129,7 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
   logger.info("  Total optimization steps = %d", t_total)
 
   best_score = 0.0
+  best_scores = {k:0.0 for k in args.predict_langs.split(",")}
   best_checkpoint = None
   patience = 0
   global_step = 0
@@ -177,6 +178,25 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
       else:
         loss.backward()
       tr_loss += loss.item()
+      if global_step == 1000:
+        output_dir = os.path.join(args.output_dir, "checkpoint-step-1000")
+        if not os.path.exists(output_dir):
+          os.makedirs(output_dir)
+        model_to_save = model.module if hasattr(model, "module") else model
+        #pdb.set_trace()
+        if args.do_save_adapters:
+          #print("PASS1")
+          model_to_save.save_all_adapters(output_dir)
+        if args.do_save_adapter_fusions:
+          #print("PASS2")
+          model_to_save.save_all_adapter_fusions(output_dir)
+        #if args.do_save_full_model:
+          #print("PASS3")
+          #model_to_save.save_pretrained(output_dir)
+        model_to_save.save_pretrained(output_dir)
+        tokenizer.save_pretrained(output_dir)
+        torch.save(args, os.path.join(output_dir, "training_args.bin"))
+        #pdb.set_trace()
       if (step + 1) % args.gradient_accumulation_steps == 0:
         if args.fp16:
           torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
@@ -193,7 +213,8 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
           #wandb.log({'loss':logging_loss})
           if args.local_rank == -1 and args.evaluate_during_training:
             # Only evaluate on single GPU otherwise metrics may not average well
-            results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
+            pdb.set_trace()
+            results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", lang=args.dev_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
             for key, value in results.items():
               tb_writer.add_scalar("eval_{}".format(key), value, global_step)
           tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
@@ -212,33 +233,22 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
 
         if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
           if args.save_only_best_checkpoint:
+            #result, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
             result, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
+            
             if result["f1"] > best_score:
               logger.info("result['f1']={} > best_score={}".format(result["f1"], best_score))
               #pdb.set_trace()
               best_score = result["f1"]
-              # Save the best model checkpoint
-              # r1_mr, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='mr', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_mr = r1_mr["f1"]
-              # print("Mr "+str(s1_mr))
-
-              # r1_ta, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='ta', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_ta = r1_ta["f1"]
-              # print("Ta "+str(s1_ta))
-
-              # r1_bn, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='bn', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_bn = r1_bn["f1"]
-              # print("Bn "+str(s1_bn))
-
-              # avg_mr = (s1_mr + s1_ta + s1_bn)/3
-              # print("Avg "+str(avg_mr))
+             
               temp_ = global_step
-              if cur_epoch <= 5:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-5")
-              elif cur_epoch <= 10:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-10")
-              else:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-15")
+              # if cur_epoch <= 5:
+              #   output_dir = os.path.join(args.output_dir, "checkpoint-best-5")
+              # elif cur_epoch <= 10:
+              #   output_dir = os.path.join(args.output_dir, "checkpoint-best-10")
+              # else:
+              #   output_dir = os.path.join(args.output_dir, "checkpoint-best-15")
+              output_dir = os.path.join(args.output_dir, "checkpoint-best-"+str(cur_epoch))
               #best_checkpoint = output_dir
               if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -630,7 +640,7 @@ def main():
   cpg_name = "cpg"
   task_name="ner"
   if args.madx2:
-    #pdb.set_trace()
+    pdb.set_trace()
     leave_out = [len(model.roberta.encoder.layer)-1]
     task_adapter_config = AdapterConfig.load(
              adapter_args.adapter_config,
@@ -648,7 +658,7 @@ def main():
   #logging.info("loading lang adpater {}".format(adapter_args.load_lang_adapter))
   # resolve the language adapter config
   if args.madx2:
-    #pdb.set_trace()
+    pdb.set_trace()
     lang_adapter_config = AdapterConfig.load(
         adapter_args.lang_adapter_config,
         non_linearity=adapter_args.lang_adapter_non_linearity,
@@ -703,7 +713,7 @@ def main():
   if args.local_rank == 0:
     torch.distributed.barrier()
   model.to(args.device)
-  pdb.set_trace()
+  #pdb.set_trace()
   logger.info("Training/evaluation parameters %s", args)
 
   # Training

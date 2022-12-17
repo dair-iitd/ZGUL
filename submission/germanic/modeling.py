@@ -393,7 +393,7 @@ class BertFusion(nn.Module):
             self.T = max(self.T - self.reduction, 1.0)
             #attention_probs_1 = torch.tensor([0.25,0.25,0.25,0.25]).repeat(batch_,128,1).to('cuda:0')
             #attention_probs_2 = torch.tensor([0.333,0.333,0.333]).repeat(batch_,128,1).to('cuda:0')
-            print(attention_probs_1[0][0], attention_probs_2[0][0], attention_probs_2[0][-1])
+            #print(attention_probs_1[0][0], attention_probs_2[0][0], attention_probs_2[0][-1])
         else:
             #pdb.set_trace()
             attention_probs_1, attention_probs_2 = torch.split(adapter_weights, batch_, 0)

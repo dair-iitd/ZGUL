@@ -41,7 +41,7 @@ from utils_tag import convert_examples_to_features
 from utils_tag import get_labels
 from utils_tag import read_examples_from_file
 import pdb
-import json
+import json 
 
 from transformers import (
   AdamW,
@@ -50,6 +50,7 @@ from transformers import (
   AutoConfig,
   AutoModelForTokenClassification,
   AutoTokenizer,
+  BertTokenizer,
   HfArgumentParser,
   MultiLingAdapterArguments,
   AdapterConfig,
@@ -57,15 +58,12 @@ from transformers import (
 )
 #from xlm import XLMForTokenClassification
 
-#LANG2ID = {'en':0, 'hi':1, 'ar':2, 'mr':3, 'ta':4, 'bn':5, 'bho':6, 'amh':7, 'hau':8, 'ibo':9, 'kin':10, 'lug':11, 'luo':12, 'pcm':13, 'swa':14, 'wol':15, 'yor':16, 'bh':6, 'as':1, 'or':1, 'ur':21}
-l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel','am':'amh','sw':'swa','wo':'wol'}
+l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel', 'am':'amh','sw':'swa','wo':'wol'}
 with open("lang2id.json", "r") as f:
   LANG2ID = json.load(f)
-
+print(LANG2ID)
 for k,v in l2l_map.items():
   LANG2ID[k] = LANG2ID[v]
-
-
 logger = logging.getLogger(__name__)
 
 def set_seed(args):
@@ -75,7 +73,7 @@ def set_seed(args):
   if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
 
-def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id=LANG2ID, keys_orig_model=None, wandb=None):
+def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id=LANG2ID, wandb=None):
   """Train the model."""
   if args.local_rank in [-1, 0]:
     tb_writer = SummaryWriter()
@@ -93,20 +91,14 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
   # Prepare optimizer and schedule (linear warmup and decay)
   no_decay = ["bias", "LayerNorm.weight"]
   optimizer_grouped_parameters = [
-    {"params": [p for n, p in model.named_parameters() if n not in keys_orig_model if not any(nd in n for nd in no_decay)],
+    {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
      "weight_decay": args.weight_decay},
-    {"params": [p for n, p in model.named_parameters() if n in keys_orig_model if not any(nd in n for nd in no_decay)],
-     "weight_decay": args.weight_decay}, 
-    {"params": [p for n, p in model.named_parameters() if n not in keys_orig_model if any(nd in n for nd in no_decay)], "weight_decay": 0.0},
-    {"params": [p for n, p in model.named_parameters() if n in keys_orig_model if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
+    {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
   ]
-  optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-  optimizer_grouped_parameters[1]['lr'] = args.base_lr
-  optimizer_grouped_parameters[3]['lr'] = args.base_lr
   #pdb.set_trace()
-  assert len(optimizer_grouped_parameters[1]['params']) + len(optimizer_grouped_parameters[3]['params']) == len(keys_orig_model)
+  optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
   logging.info([n for (n, p) in model.named_parameters() if p.requires_grad])
-  scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0.0, num_training_steps=t_total)
+  scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0.1*t_total, num_training_steps=t_total)
   if args.fp16:
     try:
       from apex import amp
@@ -170,6 +162,7 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
         pdb.set_trace()
         inputs["langs"] = batch[4]
       outputs,_ = model(**inputs)
+      #pdb.set_trace()
       loss = outputs[0]
 
       if args.n_gpu > 1:
@@ -197,7 +190,6 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
 
         if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
           # Log metrics
-          wandb.log({'loss':logging_loss})
           if args.local_rank == -1 and args.evaluate_during_training:
             # Only evaluate on single GPU otherwise metrics may not average well
             results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
@@ -224,28 +216,14 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
               logger.info("result['f1']={} > best_score={}".format(result["f1"], best_score))
               #pdb.set_trace()
               best_score = result["f1"]
-              # Save the best model checkpoint
-              # r1_mr, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='mr', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_mr = r1_mr["f1"]
-              # print("Mr "+str(s1_mr))
-
-              # r1_ta, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='ta', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_ta = r1_ta["f1"]
-              # print("Ta "+str(s1_ta))
-
-              # r1_bn, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='bn', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_bn = r1_bn["f1"]
-              # print("Bn "+str(s1_bn))
-
-              # avg_mr = (s1_mr + s1_ta + s1_bn)/3
-              # print("Avg "+str(avg_mr))
+              
               temp_ = global_step
               if cur_epoch <= 5:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-5")
+                output_dir = os.path.join(args.write_dir, "checkpoint-best-5")
               elif cur_epoch <= 10:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-10")
+                output_dir = os.path.join(args.write_dir, "checkpoint-best-10")
               else:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-15")
+                output_dir = os.path.join(args.write_dir, "checkpoint-best-15")
               #best_checkpoint = output_dir
               if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -290,7 +268,6 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
 
   return global_step, tr_loss / global_step
 
-
 def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix="", lang="en", adap_ids=None, lang2id=None, print_result=True, adapter_weight=None, lang_adapter_names=None, task_name=None, calc_weight_step=0):
   eval_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode=mode, lang=lang, lang2id=lang2id)
 
@@ -311,6 +288,9 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   preds = None
   out_label_ids = None
   model.eval()
+  weights1 = []
+  masks = []
+  weights_dict = {}
   for batch in tqdm(eval_dataloader, desc="Evaluating"):
     batch = tuple(t.to(args.device) for t in batch)
 
@@ -320,9 +300,10 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     with torch.no_grad():
       if args.l2v:
         batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda')),1),
+        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
             "attention_mask": batch[1],            
             "labels": batch[3]}
+        masks += [it for it in batch[1]]
         
       else:
         inputs = {"input_ids": batch[0],
@@ -334,8 +315,17 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
         inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
       if args.model_type == 'xlm':
         inputs["langs"] = batch[4]
-      outputs,_ = model(**inputs)
-      #pdb.set_trace()
+      outputs, adapter_weights= model(**inputs)
+      #for it_ in range(12):
+      #  print(adapter_weights[it_][0][0],adapter_weights[it_][1][0],adapter_weights[it_][1][-1]) 
+      for i in range(12):
+        x,_ = torch.split(adapter_weights[i],batch_size_,0)
+        
+        if i not in weights_dict:
+          weights_dict[i] = []
+        #pdb.set_trace()
+        weights_dict[i] += [it for it in x]
+        #torch.save(y[0], "{}_l2v_l{}.ckpt".format(lang,str(i)))
       tmp_eval_loss, logits = outputs[:2]
 
       if args.n_gpu > 1:
@@ -351,6 +341,10 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
       preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
       out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
 
+  #pdb.set_trace()
+  #torch.save(masks, "{}_masks.ckpt".format(lang))
+  #for i in range(12):
+  #  torch.save(weights_dict[i], "{}_fusion_l{}.ckpt".format(lang,str(i)))
   if nb_eval_steps == 0:
     results = {k: 0 for k in ["loss", "precision", "recall", "f1"]}
   else:
@@ -382,9 +376,11 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   return results, preds_list
 
 
+
 def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, lang, lang2id=LANG2ID, few_shot=-1):
   # Make sure only the first process in distributed training process
   # the dataset, and the others will use the cache
+  labels2labels = {1:0, 2:1, 3:2, 5:3, 6:4, 7:5, 8:6, -100:-100}
   if args.local_rank not in [-1, 0] and not evaluate:
     torch.distributed.barrier()
 
@@ -410,6 +406,7 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
       data_file = os.path.join(args.data_dir, lg, "{}.{}".format(mode, args.model_name_or_path))
       logger.info("Creating features from dataset file at {} in language {}".format(data_file, lg))
       examples = read_examples_from_file(data_file, lg, LANG2ID)
+      #pdb.set_trace()
       features_lg = convert_examples_to_features(examples, labels, args.max_seq_length, tokenizer,
                           cls_token_at_end=bool(args.model_type in ["xlnet"]),
                           cls_token=tokenizer.cls_token,
@@ -435,7 +432,12 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
 
   if few_shot > 0 and mode == 'train':
     logger.info("Original no. of examples = {}".format(len(features)))
-    features = features[: few_shot]
+    #features = features[: few_shot]
+    fewshot_features_file = os.path.join(args.data_dir, "fewShotcached_{}_{}_{}_{}_size{}".format(mode, lang,
+      list(filter(None, args.model_name_or_path.split("/"))).pop(),
+      str(args.max_seq_length), few_shot))
+    #pdb.set_trace()
+    features = torch.load(fewshot_features_file)
     logger.info('Using few-shot learning on {} examples'.format(len(features)))
 
   # Convert to Tensors and build dataset
@@ -443,6 +445,8 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
   all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
   all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
   all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
+  if mode=='train':
+    all_label_ids.apply_(lambda x: labels2labels[x])
   if args.l2v and features[0].langs is not None:
     all_langs = torch.tensor([f.langs for f in features], dtype=torch.long)
     logger.info('all_langs[0] = {}'.format(all_langs[0]))
@@ -481,6 +485,9 @@ class ModelArguments:
         default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
     )
     output_dir: str = field(
+        default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
+    )
+    write_dir: str = field(
         default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
     )
     max_seq_length: Optional[int] = field(
@@ -535,15 +542,47 @@ class ModelArguments:
     test_adapter: Optional[bool] = field(default=False)
     rf: Optional[int] = field(default=4)
     adapter_weight: Optional[str] = field(default=None)
-    base_lr:  Optional[float] = field(default=2e-5)
+
     calc_weight_step: Optional[int] = field(default=0)
     predict_save_prefix: Optional[str] = field(default=None)
+
+# def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None):
+#   task_name = "cpg"
+#   task_adapter_config = AdapterConfig.load(
+#           adapter_args.adapter_config,
+#           non_linearity=adapter_args.adapter_non_linearity,
+#           reduction_factor=args.rf,
+#   )
+#   pdb.set_trace()
+#   model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+#   #model.train_cpg_adapter([task_name])
+#   model.set_active_adapters([task_name])
+#   return model, task_name
+
+def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None,config=None):
+  cpg_name = "cpg"
+  task_name="ner"
+  # pdb.set_trace()
+  # load1_= "/".join(load_adapter.split('//')[:-1])+"/"+task_name
+  # task_adapter_config = AdapterConfig.load(
+  #          adapter_args.adapter_config,
+  #         non_linearity=adapter_args.adapter_non_linearity,
+  #         reduction_factor=2,
+  # )
+  pdb.set_trace()
+  model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+  model.load_adapter(load1_, AdapterType.text_task, config=task_adapter_config)
+  # model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+  model.set_active_adapters([[cpg_name], [task_name]])
+  return model, task_name
+
 
 def main():
   parser = argparse.ArgumentParser()
 
   parser = HfArgumentParser((ModelArguments, MultiLingAdapterArguments))
   args, adapter_args = parser.parse_args_into_dataclasses()
+
 
   if os.path.exists(args.output_dir) and os.listdir(
       args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -593,51 +632,54 @@ def main():
   # Make sure only the first process in distributed training loads model/vocab
   if args.local_rank not in [-1, 0]:
     torch.distributed.barrier()
-
+  
   config = AutoConfig.from_pretrained(
       args.config_name if args.config_name else args.model_name_or_path,
       num_labels=num_labels,
       cache_dir=args.cache_dir,
   )
+  #config = AutoConfig.from_pretrained(args.output_dir)
+  config.CPG = False
   args.model_type = config.model_type
-  tokenizer = AutoTokenizer.from_pretrained(
-      args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
-      do_lower_case=args.do_lower_case,
-      cache_dir=args.cache_dir,
-      use_fast=False,
-  )
+  #tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+  tokenizer = AutoTokenizer.from_pretrained(args.output_dir)
 
-  import wandb
-  wandb.init(config=args)
-  
-  if args.init_checkpoint:
-    logger.info("loading from init_checkpoint={}".format(args.init_checkpoint))
-    model = AutoModelForTokenClassification.from_pretrained(
-        args.init_checkpoint,
-        config=config,
-        cache_dir=args.cache_dir,
-    )
-  else:
-    logger.info("loading from existing model {}".format(args.model_name_or_path))
-    model = AutoModelForTokenClassification.from_pretrained(
-        args.model_name_or_path,
-        from_tf=bool(".ckpt" in args.model_name_or_path),
-        config=config,
-        cache_dir=args.cache_dir,
-    )
-  keys_orig_model = [k for k,v in model.named_parameters()]
+  logger.info("loading from existing model {}".format(args.model_name_or_path))
   #pdb.set_trace()
-  args.do_save_full_model= (not adapter_args.train_adapter)
-  args.do_save_adapters=adapter_args.train_adapter
-  if args.do_save_adapters:
-      logging.info('save adapters')
-      logging.info(adapter_args.train_adapter)
-  if args.do_save_full_model:
-      logging.info('save model')
-  # Setup adapters
+  # model = AutoModelForTokenClassification.from_pretrained(
+  #       args.model_name_or_path,
+  #       config=config,
+  #       cache_dir=args.cache_dir,
+  #   )
+  model = AutoModelForTokenClassification.from_pretrained(args.output_dir,config=config)
+  #pdb.set_trace()
+  lang2id = LANG2ID if args.l2v else None
+  logger.info("Using lang2id = {}".format(lang2id))
 
-  cpg_name = "cpg"
+  # Make sure only the first process in distributed training loads model/vocab
+  if args.local_rank == 0:
+    torch.distributed.barrier()
+  model.to(args.device)
+  # tokenizer = AutoTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case, use_fast=False)
+
+  #pdb.set_trace()
+  logger.info("Training/evaluation parameters %s", args)
+
+  # Initialization for evaluation
+  results = {}
+  
+  best_checkpoint = args.output_dir
+  best_f1 = 0
+
+  logger.info("Loading the best checkpoint from {}\n".format(best_checkpoint))
+  
+  load_lang_adapter = args.predict_lang_adapter
+  model.model_name = args.model_name_or_path
+  # model, task_name = setup_adapter(args, adapter_args, model, load_adapter=load_adapter, load_lang_adapter=load_lang_adapter, config=config)
+  #cpg_name = "cpg"
   task_name="ner"
+  load_adapter = best_checkpoint + "/" + task_name
+  print(load_adapter)
   if args.madx2:
     #pdb.set_trace()
     leave_out = [len(model.roberta.encoder.layer)-1]
@@ -671,6 +713,7 @@ def main():
         reduction_factor=adapter_args.lang_adapter_reduction_factor,
     )
   # load the language adapter from Hub
+  adapter_args.language = 'en,hi,bn,ar,am,sw,wo'
   languages = adapter_args.language.split(",")
   #adapter_names = adapter_args.load_lang_adapter.split(",")
   #assert len(languages) == len(adapter_names)
@@ -678,80 +721,83 @@ def main():
   #pdb.set_trace()
   for language in languages:
     print(language)
+    # #pdb.set_trace()
+    # lang_adapter_name = model.load_adapter(adapter_name,
+    #     AdapterType.text_lang,
+    #     config=lang_adapter_config,
+    #     load_as=language,
+    # )
     #pdb.set_trace()
-    lang_adapter_name = model.load_adapter(
-        language + "/wiki@ukp",
-        # AdapterType.text_lang,
-        # config=lang_adapter_config,
-        load_as=language,
-    )
+    #lang_adapter_name = model.load_adapter(language+"/wiki@ukp")
+    lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language+"/")
     lang_adapter_names.append(lang_adapter_name)
 
-  #pdb.set_trace()
+  pdb.set_trace()
   adapter_setup_ = Fuse('en','hi','bn','ar','am','sw','wo')
-  #adapter_setup_ = Fuse(lang_adapter_names)
   model.add_adapter_fusion(adapter_setup_)
-  #model.add_cpg_adapter(cpg_name, AdapterType.text_task, config=task_adapter_config)
-  #model.add_adapter(task_name, config=task_adapter_config)
-  model.train_adapter_fft_no_TA([task_name], adapter_setup_, keys_orig_model=keys_orig_model)
-  #model.train_adapter_fusion_TA([task_name], adapter_setup_)
-  model.set_active_adapters([lang_adapter_names])
-  #model.set_active_adapters([lang_adapter_names, task_name])
+  model.add_adapter(task_name, config=task_adapter_config)
+  model.train_adapter_fusion_TA([task_name], adapter_setup_)
 
-  if args.l2v:
-    adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
-  else:
-    adap_ids = None
-  # model, lang_adapter_names, task_name, adap_ids = setup_adapter(args, adapter_args, model, num_labels)
-  logger.info("lang adapter names: {}".format(" ".join(lang_adapter_names)))
-
-  lang2id = LANG2ID if args.l2v else None
-  logger.info("Using lang2id = {}".format(lang2id))
-
-  # Make sure only the first process in distributed training loads model/vocab
-  if args.local_rank == 0:
-    torch.distributed.barrier()
-  model.to(args.device)
-  keys_new_model = [k for k,v in model.named_parameters()]
-  for k in keys_orig_model:
-    if k not in keys_new_model:
-      raise Exception("Keys mismatch") 
-      pdb.set_trace()
-  logger.info("Training/evaluation parameters %s", args)
-
-  # Training
-  wandb.watch(model, log_freq=200)
+  fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(['en','hi','bn','ar'])
+  print(fusion_path_)
+  model.load_adapter_fusion(fusion_path_)
+  model.load_adapter(load_adapter)
+  #model.train_adapter_fusion_TA([task_name], lang_adapter_names)
+  model.set_active_adapters([lang_adapter_names, task_name])
+  adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
+  
   #pdb.set_trace()
-  train_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode="train", lang=args.train_langs, lang2id=lang2id, few_shot=args.few_shot)
-  global_step, tr_loss = train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id, keys_orig_model, wandb)
-  logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+  model.to(args.device)
 
-  # Saving best-practices: if you use default names for the model,
-  # you can reload it using from_pretrained()
+  train_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode="train", lang=args.train_langs, lang2id=lang2id, few_shot=args.few_shot)
+  global_step, tr_loss = train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id)
   if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
     # Create output directory if needed
-    if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
-      os.makedirs(args.output_dir)
+    if not os.path.exists(args.write_dir) and args.local_rank in [-1, 0]:
+      os.makedirs(args.write_dir)
 
     # Save model, configuration and tokenizer using `save_pretrained()`.
     # They can then be reloaded using `from_pretrained()`
     # Take care of distributed/parallel training
-    logger.info("Saving model checkpoint to %s", args.output_dir)
+    logger.info("Saving model checkpoint to %s", args.write_dir)
     model_to_save = model.module if hasattr(model, "module") else model
     if args.do_save_adapters:
       logging.info("Save adapter")
-      model_to_save.save_all_adapters(args.output_dir)
+      model_to_save.save_all_adapters(args.write_dir)
     if args.do_save_adapter_fusions:
       logging.info("Save adapter fusion")
-      model_to_save.save_all_adapter_fusions(args.output_dir)
+      model_to_save.save_all_adapter_fusions(args.write_dir)
     if args.do_save_full_model:
       logging.info("Save full model")
-      model_to_save.save_pretrained(args.output_dir)
+      model_to_save.save_pretrained(args.write_dir)
 
-    tokenizer.save_pretrained(args.output_dir)
+    tokenizer.save_pretrained(args.write_dir)
 
     # Good practice: save your training arguments together with the model
-    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+    torch.save(args, os.path.join(args.write_dir, "training_args.bin"))
+
+def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=False):
+  # Save predictions
+  with open(text_file, "r") as text_reader, open(idx_file, "r") as idx_reader:
+    text = text_reader.readlines()
+    index = idx_reader.readlines()
+    assert len(text) == len(index)
+
+  # Sanity check on the predictions
+  with open(output_file, "w") as writer:
+    example_id = 0
+    prev_id = int(index[0])
+    for line, idx in zip(text, index):
+      if line == "" or line == "\n":
+        example_id += 1
+      else:
+        cur_id = int(idx)
+        output_line = '\n' if cur_id != prev_id else ''
+        if output_word_prediction:
+          output_line += line.split()[0] + '\t'
+        output_line += predictions[example_id].pop(0) + '\n'
+        writer.write(output_line)
+        prev_id = cur_id
 
 if __name__ == "__main__":
   main()

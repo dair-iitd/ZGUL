@@ -373,12 +373,13 @@ class BertFusion(nn.Module):
             q_lang=lang_vecs[:,0,:].unsqueeze(1)
             q_lang_pad=lang_vecs[:,-1,:].unsqueeze(1)
             k_lang=lang_vecs[:,1:-1,:]
-            lang_score1 = nn.Softmax(dim=-1)(torch.bmm(q_lang, k_lang.transpose(1, 2)).repeat(1,128,1))
+            lang_score1 = torch.bmm(q_lang, k_lang.transpose(1, 2)).repeat(1,128,1)
             #lang_score1 = torch.tensor([0.3333,0.3333,0.3333]).to('cuda:0').unsqueeze(0).unsqueeze(0).repeat(batch_, max_len_,1)
             #lang_score2 = torch.tensor([0.3333,0.3333,0.3333]).to('cuda:0').unsqueeze(0).unsqueeze(0).repeat(batch_, max_len_,1)
-            lang_score2 = nn.Softmax(dim=-1)(torch.bmm(q_lang_pad, k_lang.transpose(1, 2)).repeat(1,128,1))
+            lang_score2 = torch.bmm(q_lang_pad, k_lang.transpose(1, 2)).repeat(1,128,1)
             mask = (attention_mask==0.0).squeeze().float().unsqueeze(-1).repeat(1,1,4)
-            attention_probs_2=mask*lang_score1+(1-mask)*lang_score2
+            attention_scores_2 = mask*lang_score1+(1-mask)*lang_score2
+            attention_probs_2 = nn.Softmax(dim=-1)(attention_scores_2)
             #pdb.set_trace()
             #print(lang_vecs[:,0,:][0]) 
             #cat_scores = torch.cat((attention_scores_1.unsqueeze(-1), attention_scores_2.unsqueeze(-1)),-1)
@@ -392,6 +393,7 @@ class BertFusion(nn.Module):
         else:
             #pdb.set_trace()
             attention_probs_1, attention_probs_2 = torch.split(adapter_weights, batch_, 0)
+            attention_scores_1, attention_scores_2 = torch.split(adapter_weights, batch_, 0)
             #print(attention_probs_2[0][0])
             #pdb.set_trace()
 
@@ -414,7 +416,7 @@ class BertFusion(nn.Module):
             context_layer += residual
 
         #pdb.set_trace()
-        return context_layer, torch.cat((attention_probs_1, attention_probs_2),0)
+        return context_layer, torch.cat((attention_scores_1, attention_scores_2),0)
         #return context_layer
 
 # Invertible Adapters
