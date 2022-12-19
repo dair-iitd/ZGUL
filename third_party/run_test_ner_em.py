@@ -29,7 +29,6 @@ from typing import Optional
 import numpy as np
 import scipy
 import torch
-from transformers.adapters.composition import Fuse, Stack
 from seqeval.metrics import precision_score, recall_score, f1_score
 from tensorboardX import SummaryWriter
 from torch.nn import CrossEntropyLoss
@@ -41,7 +40,8 @@ from utils_tag import convert_examples_to_features
 from utils_tag import get_labels
 from utils_tag import read_examples_from_file
 import pdb
-import json
+import json 
+import pycm
 
 from transformers import (
   AdamW,
@@ -50,6 +50,7 @@ from transformers import (
   AutoConfig,
   AutoModelForTokenClassification,
   AutoTokenizer,
+  BertTokenizer,
   HfArgumentParser,
   MultiLingAdapterArguments,
   AdapterConfig,
@@ -57,15 +58,12 @@ from transformers import (
 )
 #from xlm import XLMForTokenClassification
 
-#LANG2ID = {'en':0, 'hi':1, 'ar':2, 'mr':3, 'ta':4, 'bn':5, 'bho':6, 'amh':7, 'hau':8, 'ibo':9, 'kin':10, 'lug':11, 'luo':12, 'pcm':13, 'swa':14, 'wol':15, 'yor':16, 'bh':6, 'as':1, 'or':1, 'ur':21}
 l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel'}
 with open("lang2id.json", "r") as f:
   LANG2ID = json.load(f)
 
 for k,v in l2l_map.items():
   LANG2ID[k] = LANG2ID[v]
-
-
 logger = logging.getLogger(__name__)
 
 def set_seed(args):
@@ -75,221 +73,77 @@ def set_seed(args):
   if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
 
-def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id=LANG2ID, keys_orig_model=None, wandb=None):
-  """Train the model."""
-  if args.local_rank in [-1, 0]:
-    tb_writer = SummaryWriter()
-
-  args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-  train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-  train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
-
-  if args.max_steps > 0:
-    t_total = args.max_steps
-    args.num_train_epochs = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
-  else:
-    t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
-
-  # Prepare optimizer and schedule (linear warmup and decay)
-  no_decay = ["bias", "LayerNorm.weight"]
-  optimizer_grouped_parameters = [
-    {"params": [p for n, p in model.named_parameters() if n not in keys_orig_model if not any(nd in n for nd in no_decay)],
-     "weight_decay": args.weight_decay},
-    {"params": [p for n, p in model.named_parameters() if n in keys_orig_model if not any(nd in n for nd in no_decay)],
-     "weight_decay": args.weight_decay}, 
-    {"params": [p for n, p in model.named_parameters() if n not in keys_orig_model if any(nd in n for nd in no_decay)], "weight_decay": 0.0},
-    {"params": [p for n, p in model.named_parameters() if n in keys_orig_model if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
-  ]
-  optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-  optimizer_grouped_parameters[1]['lr'] = args.base_lr
-  optimizer_grouped_parameters[3]['lr'] = args.base_lr
+def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights):
   #pdb.set_trace()
-  assert len(optimizer_grouped_parameters[1]['params']) + len(optimizer_grouped_parameters[3]['params']) == len(keys_orig_model)
-  logging.info([n for (n, p) in model.named_parameters() if p.requires_grad])
-  scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0.0, num_training_steps=t_total)
-  if args.fp16:
-    try:
-      from apex import amp
-    except ImportError:
-      raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-
-  # multi-gpu training (should be after apex fp16 initialization)
-  if args.n_gpu > 1:
-    model = torch.nn.DataParallel(model)
-
-  # Distributed training (should be after apex fp16 initialization)
-  if args.local_rank != -1:
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                              output_device=args.local_rank,
-                              find_unused_parameters=True)
-
-  # Train!
-  logger.info("***** Running training *****")
-  logger.info("  Num examples = %d", len(train_dataset))
-  logger.info("  Num Epochs = %d", args.num_train_epochs)
-  logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-  logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-        args.train_batch_size * args.gradient_accumulation_steps * (
-          torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-  logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-  logger.info("  Total optimization steps = %d", t_total)
-
-  best_score = 0.0
-  best_checkpoint = None
-  patience = 0
-  global_step = 0
-  tr_loss, logging_loss = 0.0, 0.0
-  model.zero_grad()
-  train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
-  set_seed(args) # Add here for reproductibility (even between python 2 and 3)
-
-  cur_epoch = 0
-  for _ in train_iterator:
-    epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
-    cur_epoch += 1
-    for step, batch in enumerate(epoch_iterator):
-      batch = tuple(t.to(args.device) for t in batch if t is not None)
+  calc_step_ = args.calc_step
+  emea_lr_ = args.emea_lr
+  #pdb.set_trace()
+  batch_, max_len_ = adapter_weights[0].shape[0]//2, adapter_weights[0].shape[1]
+  for step_ in range(calc_step_):
+    # for layer_w in adapter_weights:
+    #   try:
+    #     layer_w.requires_grad = True
+    #   except:
+    #     pdb.set_trace()
+    #pdb.set_trace()
+    #model.set_active_adapters([lang_adapter_names, [task_name]])
+    #inputs["adapter_names"] = [lang_adapter_names, [task_name]]
+    #pdb.set_trace()
+    for w in adapter_weights: 
       #pdb.set_trace()
-      #print(batch[-1])
-      if args.l2v:
-        batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda')),1),
-            "attention_mask": batch[1],            
-            "labels": batch[3]}
+      try:
+        assert w.requires_grad == True
+      except:  
+        w.requires_grad = True
+    if step_ > 0:
+      # for w in adapter_weights: 
+      #   w[0].requires_grad = True
+      #   w[1].requires_grad = True
+      #pdb.set_trace()
+      w1_, w2_ = [],[]
+      for it in adapter_weights:
         #pdb.set_trace()
-      else:
-        inputs = {"input_ids": batch[0],
-              "attention_mask": batch[1],
-              "labels": batch[3]}
-      if args.model_type != "distilbert":
-        # XLM and RoBERTa don"t use segment_ids
-        inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
-
-      if args.model_type == "xlm":
-        pdb.set_trace()
-        inputs["langs"] = batch[4]
-      outputs,_ = model(**inputs)
-      loss = outputs[0]
-
-      if args.n_gpu > 1:
-        # mean() to average on multi-gpu parallel training
-        loss = loss.mean()
-      if args.gradient_accumulation_steps > 1:
-        loss = loss / args.gradient_accumulation_steps
-
-      if args.fp16:
-        with amp.scale_loss(loss, optimizer) as scaled_loss:
-          scaled_loss.backward()
-      else:
-        loss.backward()
-      tr_loss += loss.item()
-      if (step + 1) % args.gradient_accumulation_steps == 0:
-        if args.fp16:
-          torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-        else:
-          torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
-        optimizer.step()  # Update learning rate schedule
-        scheduler.step()
-        model.zero_grad()
-        global_step += 1
-
-        if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
-          # Log metrics
-          wandb.log({'loss':logging_loss})
-          if args.local_rank == -1 and args.evaluate_during_training:
-            # Only evaluate on single GPU otherwise metrics may not average well
-            results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-            for key, value in results.items():
-              tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-          tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
-          tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
-          logging_loss = tr_loss
-        #pdb.set_trace()
-        # if global_step == 1:
-        #   output_dir = os.path.join(args.output_dir, "checkpoint-best-0")
-        #   if not os.path.exists(output_dir):
-        #     os.makedirs(output_dir)
-        #   model_to_save = model.module if hasattr(model, "module") else model
-        #   model_to_save.save_all_adapters(output_dir)
-        #   model_to_save.save_all_adapter_fusions(output_dir)
-        #   model_to_save.save_pretrained(output_dir)
-        #   tokenizer.save_pretrained(output_dir)
-
-        if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
-          if args.save_only_best_checkpoint:
-            result, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-            if result["f1"] > best_score:
-              logger.info("result['f1']={} > best_score={}".format(result["f1"], best_score))
-              #pdb.set_trace()
-              best_score = result["f1"]
-              # Save the best model checkpoint
-              # r1_mr, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='mr', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_mr = r1_mr["f1"]
-              # print("Mr "+str(s1_mr))
-
-              # r1_ta, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='ta', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_ta = r1_ta["f1"]
-              # print("Ta "+str(s1_ta))
-
-              # r1_bn, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang='bn', adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-              # s1_bn = r1_bn["f1"]
-              # print("Bn "+str(s1_bn))
-
-              # avg_mr = (s1_mr + s1_ta + s1_bn)/3
-              # print("Avg "+str(avg_mr))
-              temp_ = global_step
-              if cur_epoch <= 5:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-5")
-              elif cur_epoch <= 10:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-10")
-              else:
-                output_dir = os.path.join(args.output_dir, "checkpoint-best-15")
-              #best_checkpoint = output_dir
-              if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-              # Take care of distributed/parallel training
-              model_to_save = model.module if hasattr(model, "module") else model
-              #pdb.set_trace()
-              if args.do_save_adapters:
-                #print("PASS1")
-                model_to_save.save_all_adapters(output_dir)
-              if args.do_save_adapter_fusions:
-                #print("PASS2")
-                model_to_save.save_all_adapter_fusions(output_dir)
-              #if args.do_save_full_model:
-                #print("PASS3")
-                #model_to_save.save_pretrained(output_dir)
-              model_to_save.save_pretrained(output_dir)
-              tokenizer.save_pretrained(output_dir)
-              torch.save(args, os.path.join(output_dir, "training_args.bin"))
-              logger.info("Saving the best model checkpoint to %s", output_dir)
-              logger.info("Reset patience to 0")
-              patience = 0
-            else:
-              patience += 1
-              logger.info("Hit patience={}".format(patience))
-              if args.eval_patience > 0 and patience > args.eval_patience:
-                logger.info("early stop! patience={}".format(patience))
-                epoch_iterator.close()
-                train_iterator.close()
-                if args.local_rank in [-1, 0]:
-                  tb_writer.close()
-                return global_step, tr_loss / global_step
-
-      if args.max_steps > 0 and global_step > args.max_steps:
-        epoch_iterator.close()
-        break
-    if args.max_steps > 0 and global_step > args.max_steps:
-      train_iterator.close()
-      break
-
-  if args.local_rank in [-1, 0]:
-    tb_writer.close()
-
-  return global_step, tr_loss / global_step
-
+        z1,z2=torch.split(it,batch_,0)
+        w1_.append(z1)
+        w2_.append(z2)
+      normed_adapter_weights1 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w1_]
+      normed_adapter_weights2 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w2_]
+      normed_adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(normed_adapter_weights1,normed_adapter_weights2)]
+      inputs["adapter_weights"] = normed_adapter_weights
+      #pdb.set_trace()
+    else:
+      #adapter_weights[0].requires_grad = True
+      inputs["adapter_weights"] = adapter_weights
+      
+    #pdb.set_trace()
+    outputs, _ = model(**inputs)
+    #loss, logits, orig_sequence_output = outputs[:3]
+    kept_logits = outputs[-1]
+    #pdb.set_trace()
+    entropy = torch.nn.functional.softmax(kept_logits, dim=1)*torch.nn.functional.log_softmax(kept_logits, dim=1)
+    entropy = -entropy.sum() / kept_logits.size(0)
+    #pdb.set_trace()
+    #adapter_weights[0].requires_grad=True
+    #pdb.set_trace()
+    try:
+      #grads = torch.autograd.grad(entropy, adapter_weights[1:])
+      grads = torch.autograd.grad(entropy, adapter_weights)
+    except:
+      pdb.set_trace()
+    #pdb.set_trace()
+    for i in range(12):
+      #adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i-1].data
+      adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i].data
+    #adapter_weights = deepcopy(normed_adapter_weights)
+    #pdb.set_trace()
+  #pdb.set_trace()
+  if calc_step_ > 0:
+    normed_adapter_weights = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights]
+    inputs["adapter_weights"] = normed_adapter_weights
+  else:
+    inputs["adapter_weights"] = adapter_weights
+  outputs, adapter_weights = model(**inputs)
+  return outputs, adapter_weights
 
 def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix="", lang="en", adap_ids=None, lang2id=None, print_result=True, adapter_weight=None, lang_adapter_names=None, task_name=None, calc_weight_step=0):
   eval_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode=mode, lang=lang, lang2id=lang2id)
@@ -310,6 +164,9 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   nb_eval_steps = 0
   preds = None
   out_label_ids = None
+  weights1 = []
+  masks = []
+  weights_dict = {}
   model.eval()
   for batch in tqdm(eval_dataloader, desc="Evaluating"):
     batch = tuple(t.to(args.device) for t in batch)
@@ -317,32 +174,44 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     if calc_weight_step > 0:
       pdb.set_trace()
       adapter_weight = calc_weight_multi(args, model, batch, lang_adapter_names, task_name, adapter_weight, 0)
-    with torch.no_grad():
-      if args.l2v:
-        batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda')),1),
-            "attention_mask": batch[1],            
+    #with torch.no_grad():
+    if args.l2v:
+      batch_size_ = batch[0].shape[0]
+      inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
+          "attention_mask": batch[1],            
+          "labels": batch[3]}
+      masks += [it for it in batch[1]]
+      
+    else:
+      inputs = {"input_ids": batch[0],
+            "attention_mask": batch[1],
             "labels": batch[3]}
-        
-      else:
-        inputs = {"input_ids": batch[0],
-              "attention_mask": batch[1],
-              "labels": batch[3]}
 
-      if args.model_type != "distilbert":
-        # XLM and RoBERTa don"t use segment_ids
-        inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
-      if args.model_type == 'xlm':
-        inputs["langs"] = batch[4]
-      outputs,_ = model(**inputs)
+    if args.model_type != "distilbert":
+      # XLM and RoBERTa don"t use segment_ids
+      inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
+    if args.model_type == 'xlm':
+      inputs["langs"] = batch[4]
+
+    outputs, adapter_weights = model(**inputs)
+    #pdb.set_trace()
+    assert len(adapter_weights)==12 and adapter_weights[0] is not None
+    outputs, adapter_weights = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
+    for i in range(12):
+      x,y = torch.split(adapter_weights[i],batch_size_,0)
+      if i not in weights_dict:
+        weights_dict[i] = []
       #pdb.set_trace()
-      tmp_eval_loss, logits = outputs[:2]
+      weights_dict[i] += [it for it in x]
+      #torch.save(y[0], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
+    tmp_eval_loss, logits = outputs[:2]
+    print(adapter_weights[0][1])
+    #for it in range(12): print(adapter_weights[it][1][0], adapter_weights[it][1][-1])
+    if args.n_gpu > 1:
+      # mean() to average on multi-gpu parallel evaluating
+      tmp_eval_loss = tmp_eval_loss.mean()
 
-      if args.n_gpu > 1:
-        # mean() to average on multi-gpu parallel evaluating
-        tmp_eval_loss = tmp_eval_loss.mean()
-
-      eval_loss += tmp_eval_loss.item()
+    eval_loss += tmp_eval_loss.item()
     nb_eval_steps += 1
     if preds is None:
       preds = logits.detach().cpu().numpy()
@@ -350,7 +219,9 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     else:
       preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
       out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-
+  # torch.save(masks, "{}_masks_em.ckpt".format(lang))
+  # for i in range(12):
+  #   torch.save(weights_dict[i], "{}_fusion_em_l{}.ckpt".format(lang,str(i)))
   if nb_eval_steps == 0:
     results = {k: 0 for k in ["loss", "precision", "recall", "f1"]}
   else:
@@ -361,12 +232,15 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
-
+    fout_list = []
+    fpred_list = []
     for i in range(out_label_ids.shape[0]):
       for j in range(out_label_ids.shape[1]):
         if out_label_ids[i, j] != pad_token_label_id:
           out_label_list[i].append(label_map[out_label_ids[i][j]])
           preds_list[i].append(label_map[preds[i][j]])
+    #      fout_list.append(label_map[out_label_ids[i][j]])
+    #      fpred_list.append(label_map[preds[i][j]])
 
     results = {
       "loss": eval_loss,
@@ -379,7 +253,18 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     logger.info("***** Evaluation result %s in %s *****" % (prefix, lang))
     for key in sorted(results.keys()):
       logger.info("  %s = %s", key, str(results[key]))
+    #cm = pycm.ConfusionMatrix(actual_vector=fout_list, predict_vector=fpred_list)
+    #print(cm)
+  #with open(args.outfile, "a") as f:
+  #  write_st = lang+" "+str(results["f1"])+"\n"
+  #  f.write(write_st)
+  #with open("ass.txt", "w") as f:
+  #  for g,p in zip(out_label_list,preds_list):
+  #    for x,y in zip(g,p):
+  #      f.write(x+"\t"+y+"\n")
+  #    f.write("\n")
   return results, preds_list
+
 
 
 def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, lang, lang2id=LANG2ID, few_shot=-1):
@@ -410,6 +295,7 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
       data_file = os.path.join(args.data_dir, lg, "{}.{}".format(mode, args.model_name_or_path))
       logger.info("Creating features from dataset file at {} in language {}".format(data_file, lg))
       examples = read_examples_from_file(data_file, lg, LANG2ID)
+      #pdb.set_trace()
       features_lg = convert_examples_to_features(examples, labels, args.max_seq_length, tokenizer,
                           cls_token_at_end=bool(args.model_type in ["xlnet"]),
                           cls_token=tokenizer.cls_token,
@@ -535,15 +421,49 @@ class ModelArguments:
     test_adapter: Optional[bool] = field(default=False)
     rf: Optional[int] = field(default=4)
     adapter_weight: Optional[str] = field(default=None)
-    base_lr:  Optional[float] = field(default=2e-5)
+    outfile: Optional[str] = field(default=None)
     calc_weight_step: Optional[int] = field(default=0)
+    calc_step: Optional[int] = field(default=1)
+    emea_lr: Optional[float] = field(default=1.0)
     predict_save_prefix: Optional[str] = field(default=None)
+
+# def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None):
+#   task_name = "cpg"
+#   task_adapter_config = AdapterConfig.load(
+#           adapter_args.adapter_config,
+#           non_linearity=adapter_args.adapter_non_linearity,
+#           reduction_factor=args.rf,
+#   )
+#   pdb.set_trace()
+#   model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+#   #model.train_cpg_adapter([task_name])
+#   model.set_active_adapters([task_name])
+#   return model, task_name
+
+def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None,config=None):
+  cpg_name = "cpg"
+  task_name="ner"
+  # pdb.set_trace()
+  # load1_= "/".join(load_adapter.split('//')[:-1])+"/"+task_name
+  # task_adapter_config = AdapterConfig.load(
+  #          adapter_args.adapter_config,
+  #         non_linearity=adapter_args.adapter_non_linearity,
+  #         reduction_factor=2,
+  # )
+  pdb.set_trace()
+  model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+  model.load_adapter(load1_, AdapterType.text_task, config=task_adapter_config)
+  # model.load_adapter(load_adapter, AdapterType.text_task, config=task_adapter_config)
+  model.set_active_adapters([[cpg_name], [task_name]])
+  return model, task_name
+
 
 def main():
   parser = argparse.ArgumentParser()
 
   parser = HfArgumentParser((ModelArguments, MultiLingAdapterArguments))
   args, adapter_args = parser.parse_args_into_dataclasses()
+
 
   if os.path.exists(args.output_dir) and os.listdir(
       args.output_dir) and args.do_train and not args.overwrite_output_dir:
@@ -593,51 +513,54 @@ def main():
   # Make sure only the first process in distributed training loads model/vocab
   if args.local_rank not in [-1, 0]:
     torch.distributed.barrier()
-
+  
   config = AutoConfig.from_pretrained(
       args.config_name if args.config_name else args.model_name_or_path,
       num_labels=num_labels,
       cache_dir=args.cache_dir,
   )
+  #config = AutoConfig.from_pretrained(args.output_dir)
+  config.CPG = False
   args.model_type = config.model_type
-  tokenizer = AutoTokenizer.from_pretrained(
-      args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,
-      do_lower_case=args.do_lower_case,
-      cache_dir=args.cache_dir,
-      use_fast=False,
-  )
+  #tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+  tokenizer = AutoTokenizer.from_pretrained(args.output_dir)
 
-  import wandb
-  wandb.init(config=args)
-  
-  if args.init_checkpoint:
-    logger.info("loading from init_checkpoint={}".format(args.init_checkpoint))
-    model = AutoModelForTokenClassification.from_pretrained(
-        args.init_checkpoint,
-        config=config,
-        cache_dir=args.cache_dir,
-    )
-  else:
-    logger.info("loading from existing model {}".format(args.model_name_or_path))
-    model = AutoModelForTokenClassification.from_pretrained(
-        args.model_name_or_path,
-        from_tf=bool(".ckpt" in args.model_name_or_path),
-        config=config,
-        cache_dir=args.cache_dir,
-    )
-  keys_orig_model = [k for k,v in model.named_parameters()]
+  logger.info("loading from existing model {}".format(args.model_name_or_path))
   #pdb.set_trace()
-  args.do_save_full_model= (not adapter_args.train_adapter)
-  args.do_save_adapters=adapter_args.train_adapter
-  if args.do_save_adapters:
-      logging.info('save adapters')
-      logging.info(adapter_args.train_adapter)
-  if args.do_save_full_model:
-      logging.info('save model')
-  # Setup adapters
+  # model = AutoModelForTokenClassification.from_pretrained(
+  #       args.model_name_or_path,
+  #       config=config,
+  #       cache_dir=args.cache_dir,
+  #   )
+  model = AutoModelForTokenClassification.from_pretrained(args.output_dir,config=config)
+  #pdb.set_trace()
+  lang2id = LANG2ID if args.l2v else None
+  logger.info("Using lang2id = {}".format(lang2id))
 
-  cpg_name = "cpg"
+  # Make sure only the first process in distributed training loads model/vocab
+  if args.local_rank == 0:
+    torch.distributed.barrier()
+  model.to(args.device)
+  # tokenizer = AutoTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case, use_fast=False)
+
+  #pdb.set_trace()
+  logger.info("Training/evaluation parameters %s", args)
+
+  # Initialization for evaluation
+  results = {}
+  
+  best_checkpoint = args.output_dir
+  best_f1 = 0
+
+  logger.info("Loading the best checkpoint from {}\n".format(best_checkpoint))
+  
+  load_lang_adapter = args.predict_lang_adapter
+  model.model_name = args.model_name_or_path
+  # model, task_name = setup_adapter(args, adapter_args, model, load_adapter=load_adapter, load_lang_adapter=load_lang_adapter, config=config)
+  #cpg_name = "cpg"
   task_name="ner"
+  load_adapter = best_checkpoint + "/" + task_name
+  print(load_adapter)
   if args.madx2:
     #pdb.set_trace()
     leave_out = [len(model.roberta.encoder.layer)-1]
@@ -678,80 +601,88 @@ def main():
   #pdb.set_trace()
   for language in languages:
     print(language)
+    # #pdb.set_trace()
+    # lang_adapter_name = model.load_adapter(adapter_name,
+    #     AdapterType.text_lang,
+    #     config=lang_adapter_config,
+    #     load_as=language,
+    # )
     #pdb.set_trace()
-    lang_adapter_name = model.load_adapter(
-        language + "/wiki@ukp",
-        # AdapterType.text_lang,
-        # config=lang_adapter_config,
-        load_as=language,
-    )
+    #lang_adapter_name = model.load_adapter(language+"/wiki@ukp")
+    lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language+"/")
     lang_adapter_names.append(lang_adapter_name)
 
+  #adapter_setup_ = Fuse('en','hi','ar')
+  fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
+  model.load_adapter_fusion(fusion_path_)
   #pdb.set_trace()
-  adapter_setup_ = Fuse('en','is','de','ru','cs')
-  #adapter_setup_ = Fuse(lang_adapter_names)
-  model.add_adapter_fusion(adapter_setup_)
   #model.add_cpg_adapter(cpg_name, AdapterType.text_task, config=task_adapter_config)
-  model.add_adapter(task_name, config=task_adapter_config)
-  model.train_adapter_fft_no_TA([task_name], adapter_setup_, keys_orig_model=keys_orig_model)
-  #model.train_adapter_fusion_TA([task_name], adapter_setup_)
+  model.load_adapter(load_adapter)
+  #model.train_adapter_final([cpg_name, task_name], lang_adapter_names)
+  #model.train_adapter_fusion_TA([task_name], lang_adapter_names)
   #model.set_active_adapters([lang_adapter_names, [cpg_name,task_name]])
   model.set_active_adapters([lang_adapter_names, task_name])
-
-  if args.l2v:
-    adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
-  else:
-    adap_ids = None
-  # model, lang_adapter_names, task_name, adap_ids = setup_adapter(args, adapter_args, model, num_labels)
-  logger.info("lang adapter names: {}".format(" ".join(lang_adapter_names)))
-
-  lang2id = LANG2ID if args.l2v else None
-  logger.info("Using lang2id = {}".format(lang2id))
-
-  # Make sure only the first process in distributed training loads model/vocab
-  if args.local_rank == 0:
-    torch.distributed.barrier()
-  model.to(args.device)
-  keys_new_model = [k for k,v in model.named_parameters()]
-  for k in keys_orig_model:
-    if k not in keys_new_model:
-      raise Exception("Keys mismatch") 
-      pdb.set_trace()
-  logger.info("Training/evaluation parameters %s", args)
-
-  # Training
-  wandb.watch(model, log_freq=200)
+  adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
   #pdb.set_trace()
-  train_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode="train", lang=args.train_langs, lang2id=lang2id, few_shot=args.few_shot)
-  global_step, tr_loss = train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id, keys_orig_model, wandb)
-  logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
+  model.to(args.device)
+  output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
+  with open(output_test_results_file, "a") as result_writer:
+    for lang in args.predict_langs.split(','):
+      if not os.path.exists(os.path.join(args.data_dir, lang, 'test.{}'.format(args.model_name_or_path))):
+        logger.info("Language {} does not exist".format(lang))
+        continue
+      adapter_weight = None
+      if not args.adapter_weight:
+        if (adapter_args.train_adapter or args.test_adapter) and not args.adapter_weight:
+          pass
+    
+      else:
+        if args.adapter_weight != "0":
+            adapter_weight = [float(w) for w in args.adapter_weight.split(",")]
+        pdb.set_trace()
+        model.set_active_adapters([lang_adapter_names, [task_name]])
+      result, predictions = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="test", lang=lang, adap_ids=adap_ids, lang2id=lang2id, adapter_weight=adapter_weight, lang_adapter_names=lang_adapter_names, task_name=task_name, calc_weight_step=args.calc_weight_step)
 
-  # Saving best-practices: if you use default names for the model,
-  # you can reload it using from_pretrained()
-  if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-    # Create output directory if needed
-    if not os.path.exists(args.output_dir) and args.local_rank in [-1, 0]:
-      os.makedirs(args.output_dir)
+      # Save results
+      if args.predict_save_prefix is not None:
+        result_writer.write("=====================\nlanguage={}_{}\n".format(args.predict_save_prefix, lang))
+      else:
+        result_writer.write("=====================\nlanguage={}\n".format(lang))
+      for key in sorted(result.keys()):
+        result_writer.write("{} = {}\n".format(key, str(result[key])))
+      # Save predictions
+      if args.predict_save_prefix is not None:
+        output_test_predictions_file = os.path.join(args.output_dir, "test_{}_{}_predictions.txt".format(args.predict_save_prefix, lang))
+      else:
+        output_test_predictions_file = os.path.join(args.output_dir, "test_{}_predictions.txt".format(lang))
+      infile = os.path.join(args.data_dir, lang, "test.{}".format(args.model_name_or_path))
+      idxfile = infile + '.idx'
+      save_predictions(args, predictions, output_test_predictions_file, infile, idxfile)
 
-    # Save model, configuration and tokenizer using `save_pretrained()`.
-    # They can then be reloaded using `from_pretrained()`
-    # Take care of distributed/parallel training
-    logger.info("Saving model checkpoint to %s", args.output_dir)
-    model_to_save = model.module if hasattr(model, "module") else model
-    if args.do_save_adapters:
-      logging.info("Save adapter")
-      model_to_save.save_all_adapters(args.output_dir)
-    if args.do_save_adapter_fusions:
-      logging.info("Save adapter fusion")
-      model_to_save.save_all_adapter_fusions(args.output_dir)
-    if args.do_save_full_model:
-      logging.info("Save full model")
-      model_to_save.save_pretrained(args.output_dir)
+def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=True):
+  # Save predictions
+  with open(text_file, "r") as text_reader, open(idx_file, "r") as idx_reader:
+    text = text_reader.readlines()
+    index = idx_reader.readlines()
+    assert len(text) == len(index)
 
-    tokenizer.save_pretrained(args.output_dir)
-
-    # Good practice: save your training arguments together with the model
-    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+  # Sanity check on the predictions
+  with open(output_file, "w") as writer:
+    example_id = 0
+    prev_id = int(index[0])
+    for line, idx in zip(text, index):
+      if line == "" or line == "\n":
+        example_id += 1
+      else:
+        cur_id = int(idx)
+        output_line = '\n' if cur_id != prev_id else ''
+        if output_word_prediction:
+          output_line += line.split()[0] + '\t'
+          output_line += line.split()[1] + '\t'
+          #pdb.set_trace()
+        output_line += predictions[example_id].pop(0) + '\n'
+        writer.write(output_line)
+        prev_id = cur_id
 
 if __name__ == "__main__":
   main()

@@ -29,7 +29,6 @@ from typing import Optional
 import numpy as np
 import scipy
 import torch
-from transformers.adapters.composition import Fuse, Stack
 from seqeval.metrics import precision_score, recall_score, f1_score
 from tensorboardX import SummaryWriter
 from torch.nn import CrossEntropyLoss
@@ -58,10 +57,10 @@ from transformers import (
 )
 #from xlm import XLMForTokenClassification
 
-l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel', 'am':'amh','sw':'swa','wo':'wol'}
+l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel','am':'amh','sw':'swa','wo':'wol'}
 with open("lang2id.json", "r") as f:
   LANG2ID = json.load(f)
-print(LANG2ID)
+
 for k,v in l2l_map.items():
   LANG2ID[k] = LANG2ID[v]
 logger = logging.getLogger(__name__)
@@ -73,200 +72,86 @@ def set_seed(args):
   if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
 
-def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id=LANG2ID, wandb=None):
-  """Train the model."""
-  if args.local_rank in [-1, 0]:
-    tb_writer = SummaryWriter()
-
-  args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-  train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
-  train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
-
-  if args.max_steps > 0:
-    t_total = args.max_steps
-    args.num_train_epochs = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
-  else:
-    t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
-
-  # Prepare optimizer and schedule (linear warmup and decay)
-  no_decay = ["bias", "LayerNorm.weight"]
-  optimizer_grouped_parameters = [
-    {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-     "weight_decay": args.weight_decay},
-    {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
-  ]
+def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights):
   #pdb.set_trace()
-  optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-  logging.info([n for (n, p) in model.named_parameters() if p.requires_grad])
-  scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0.1*t_total, num_training_steps=t_total)
-  if args.fp16:
+  calc_step_ = args.calc_step
+  emea_lr_ = args.emea_lr
+  #adapter_weights = [50*it for it in adapter_weights]
+
+  batch_, max_len_ = adapter_weights[0].shape[0]//2, adapter_weights[0].shape[1]
+  #pdb.set_trace()
+  for i,it in enumerate(adapter_weights):
+    it1, it2 = torch.split(it, batch_, 0)
+    it2 = args.em_scale*it2
+    it = torch.cat((it1, it2), 0)
+    adapter_weights[i] = it
+  #pdb.set_trace()
+  for step_ in range(calc_step_):
+    
+    # for layer_w in adapter_weights:
+    #   try:
+    #     layer_w.requires_grad = True
+    #   except:
+    #     pdb.set_trace()
+    #pdb.set_trace()
+    #model.set_active_adapters([lang_adapter_names, [task_name]])
+    #inputs["adapter_names"] = [lang_adapter_names, [task_name]]
+    #pdb.set_trace()
+    for w in adapter_weights: 
+      #pdb.set_trace()
+      try:
+        assert w.requires_grad == True
+      except:  
+        w.requires_grad = True
+    if step_ >= 0:
+      # for w in adapter_weights: 
+      #   w[0].requires_grad = True
+      #   w[1].requires_grad = True
+      #pdb.set_trace()
+      w1_, w2_ = [],[]
+      for it in adapter_weights:
+        #pdb.set_trace()
+        z1,z2=torch.split(it,batch_,0)
+        w1_.append(z1)
+        w2_.append(z2)
+      normed_adapter_weights1 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w1_]
+      normed_adapter_weights2 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w2_]
+      normed_adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(normed_adapter_weights1,normed_adapter_weights2)]
+      inputs["adapter_weights"] = normed_adapter_weights
+      #pdb.set_trace()
+    else:
+      #adapter_weights[0].requires_grad = True
+      inputs["adapter_weights"] = adapter_weights
+      
+    #pdb.set_trace()
+    outputs, _ = model(**inputs)
+    #loss, logits, orig_sequence_output = outputs[:3]
+    kept_logits = outputs[-1]
+    #pdb.set_trace()
+    entropy = torch.nn.functional.softmax(kept_logits, dim=1)*torch.nn.functional.log_softmax(kept_logits, dim=1)
+    entropy = -entropy.sum() / kept_logits.size(0)
+    #pdb.set_trace()
+    #adapter_weights[0].requires_grad=True
+    #pdb.set_trace()
     try:
-      from apex import amp
-    except ImportError:
-      raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-
-  # multi-gpu training (should be after apex fp16 initialization)
-  if args.n_gpu > 1:
-    model = torch.nn.DataParallel(model)
-
-  # Distributed training (should be after apex fp16 initialization)
-  if args.local_rank != -1:
-    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                              output_device=args.local_rank,
-                              find_unused_parameters=True)
-
-  # Train!
-  logger.info("***** Running training *****")
-  logger.info("  Num examples = %d", len(train_dataset))
-  logger.info("  Num Epochs = %d", args.num_train_epochs)
-  logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-  logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-        args.train_batch_size * args.gradient_accumulation_steps * (
-          torch.distributed.get_world_size() if args.local_rank != -1 else 1))
-  logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-  logger.info("  Total optimization steps = %d", t_total)
-
-  best_score = 0.0
-  best_checkpoint = None
-  patience = 0
-  global_step = 0
-  tr_loss, logging_loss = 0.0, 0.0
-  model.zero_grad()
-  train_iterator = trange(int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0])
-  set_seed(args) # Add here for reproductibility (even between python 2 and 3)
-
-  cur_epoch = 0
-  for _ in train_iterator:
-    epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
-    cur_epoch += 1
-    for step, batch in enumerate(epoch_iterator):
-      batch = tuple(t.to(args.device) for t in batch if t is not None)
-      #pdb.set_trace()
-      #print(batch[-1])
-      if args.l2v:
-        batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda')),1),
-            "attention_mask": batch[1],            
-            "labels": batch[3]}
-        #pdb.set_trace()
-      else:
-        inputs = {"input_ids": batch[0],
-              "attention_mask": batch[1],
-              "labels": batch[3]}
-      if args.model_type != "distilbert":
-        # XLM and RoBERTa don"t use segment_ids
-        inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
-
-      if args.model_type == "xlm":
-        pdb.set_trace()
-        inputs["langs"] = batch[4]
-      outputs,_ = model(**inputs)
-      #pdb.set_trace()
-      loss = outputs[0]
-
-      if args.n_gpu > 1:
-        # mean() to average on multi-gpu parallel training
-        loss = loss.mean()
-      if args.gradient_accumulation_steps > 1:
-        loss = loss / args.gradient_accumulation_steps
-
-      if args.fp16:
-        with amp.scale_loss(loss, optimizer) as scaled_loss:
-          scaled_loss.backward()
-      else:
-        loss.backward()
-      tr_loss += loss.item()
-      if (step + 1) % args.gradient_accumulation_steps == 0:
-        if args.fp16:
-          torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-        else:
-          torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
-        optimizer.step()  # Update learning rate schedule
-        scheduler.step()
-        model.zero_grad()
-        global_step += 1
-
-        if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
-          # Log metrics
-          if args.local_rank == -1 and args.evaluate_during_training:
-            # Only evaluate on single GPU otherwise metrics may not average well
-            results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-            for key, value in results.items():
-              tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-          tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
-          tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
-          logging_loss = tr_loss
-        #pdb.set_trace()
-        # if global_step == 1:
-        #   output_dir = os.path.join(args.output_dir, "checkpoint-best-0")
-        #   if not os.path.exists(output_dir):
-        #     os.makedirs(output_dir)
-        #   model_to_save = model.module if hasattr(model, "module") else model
-        #   model_to_save.save_all_adapters(output_dir)
-        #   model_to_save.save_all_adapter_fusions(output_dir)
-        #   model_to_save.save_pretrained(output_dir)
-        #   tokenizer.save_pretrained(output_dir)
-
-        if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
-          if args.save_only_best_checkpoint:
-            result, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
-            if result["f1"] > best_score:
-              logger.info("result['f1']={} > best_score={}".format(result["f1"], best_score))
-              #pdb.set_trace()
-              best_score = result["f1"]
-              
-              temp_ = global_step
-              if cur_epoch <= 5:
-                output_dir = os.path.join(args.write_dir, "checkpoint-best-5")
-              elif cur_epoch <= 10:
-                output_dir = os.path.join(args.write_dir, "checkpoint-best-10")
-              else:
-                output_dir = os.path.join(args.write_dir, "checkpoint-best-15")
-              #best_checkpoint = output_dir
-              if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-              # Take care of distributed/parallel training
-              model_to_save = model.module if hasattr(model, "module") else model
-              #pdb.set_trace()
-              if args.do_save_adapters:
-                #print("PASS1")
-                model_to_save.save_all_adapters(output_dir)
-              if args.do_save_adapter_fusions:
-                #print("PASS2")
-                model_to_save.save_all_adapter_fusions(output_dir)
-              #if args.do_save_full_model:
-                #print("PASS3")
-                #model_to_save.save_pretrained(output_dir)
-              model_to_save.save_pretrained(output_dir)
-              tokenizer.save_pretrained(output_dir)
-              torch.save(args, os.path.join(output_dir, "training_args.bin"))
-              logger.info("Saving the best model checkpoint to %s", output_dir)
-              logger.info("Reset patience to 0")
-              patience = 0
-            else:
-              patience += 1
-              logger.info("Hit patience={}".format(patience))
-              if args.eval_patience > 0 and patience > args.eval_patience:
-                logger.info("early stop! patience={}".format(patience))
-                epoch_iterator.close()
-                train_iterator.close()
-                if args.local_rank in [-1, 0]:
-                  tb_writer.close()
-                return global_step, tr_loss / global_step
-
-      if args.max_steps > 0 and global_step > args.max_steps:
-        epoch_iterator.close()
-        break
-    if args.max_steps > 0 and global_step > args.max_steps:
-      train_iterator.close()
-      break
-
-  if args.local_rank in [-1, 0]:
-    tb_writer.close()
-
-  return global_step, tr_loss / global_step
+      #grads = torch.autograd.grad(entropy, adapter_weights[1:])
+      grads = torch.autograd.grad(entropy, adapter_weights)
+    except:
+      pdb.set_trace()
+    #pdb.set_trace()
+    for i in range(12):
+      #adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i-1].data
+      adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i].data
+    #adapter_weights = deepcopy(normed_adapter_weights)
+    #pdb.set_trace()
+  #pdb.set_trace()
+  if calc_step_ >= 0:
+    normed_adapter_weights = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights]
+    inputs["adapter_weights"] = normed_adapter_weights
+  else:
+    inputs["adapter_weights"] = adapter_weights
+  outputs, adapter_weights = model(**inputs)
+  return outputs, adapter_weights
 
 def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix="", lang="en", adap_ids=None, lang2id=None, print_result=True, adapter_weight=None, lang_adapter_names=None, task_name=None, calc_weight_step=0):
   eval_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode=mode, lang=lang, lang2id=lang2id)
@@ -287,52 +172,58 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   nb_eval_steps = 0
   preds = None
   out_label_ids = None
-  model.eval()
   weights1 = []
   masks = []
-  weights_dict = {}
+  weights_dict_fus = {}
+  weights_dict_l2v = {}
+  model.eval()
   for batch in tqdm(eval_dataloader, desc="Evaluating"):
     batch = tuple(t.to(args.device) for t in batch)
 
     if calc_weight_step > 0:
       pdb.set_trace()
       adapter_weight = calc_weight_multi(args, model, batch, lang_adapter_names, task_name, adapter_weight, 0)
-    with torch.no_grad():
-      if args.l2v:
-        batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
-            "attention_mask": batch[1],            
+    #with torch.no_grad():
+    if args.l2v:
+      batch_size_ = batch[0].shape[0]
+      inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
+          "attention_mask": batch[1],            
+          "labels": batch[3]}
+      masks += [it for it in batch[1]]
+      
+    else:
+      inputs = {"input_ids": batch[0],
+            "attention_mask": batch[1],
             "labels": batch[3]}
-        masks += [it for it in batch[1]]
-        
-      else:
-        inputs = {"input_ids": batch[0],
-              "attention_mask": batch[1],
-              "labels": batch[3]}
 
-      if args.model_type != "distilbert":
-        # XLM and RoBERTa don"t use segment_ids
-        inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
-      if args.model_type == 'xlm':
-        inputs["langs"] = batch[4]
-      outputs, adapter_weights= model(**inputs)
-      #for it_ in range(12):
-      #  print(adapter_weights[it_][0][0],adapter_weights[it_][1][0],adapter_weights[it_][1][-1]) 
-      for i in range(12):
-        x,_ = torch.split(adapter_weights[i],batch_size_,0)
-        
-        if i not in weights_dict:
-          weights_dict[i] = []
-        #pdb.set_trace()
-        weights_dict[i] += [it for it in x]
-        #torch.save(y[0], "{}_l2v_l{}.ckpt".format(lang,str(i)))
-      tmp_eval_loss, logits = outputs[:2]
+    if args.model_type != "distilbert":
+      # XLM and RoBERTa don"t use segment_ids
+      inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
+    if args.model_type == 'xlm':
+      inputs["langs"] = batch[4]
 
-      if args.n_gpu > 1:
-        # mean() to average on multi-gpu parallel evaluating
-        tmp_eval_loss = tmp_eval_loss.mean()
+    outputs, adapter_weights = model(**inputs)
+    #pdb.set_trace()
+    assert len(adapter_weights)==12 and adapter_weights[0] is not None
+    outputs, adapter_weights = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
+    for i in range(12):
+      x,y = torch.split(adapter_weights[i],batch_size_,0)
+      if i not in weights_dict_fus:
+        weights_dict_fus[i] = []
+      if i not in weights_dict_l2v:
+        weights_dict_l2v[i] = []
+      #pdb.set_trace()
+      weights_dict_fus[i] += [it for it in x]
+      weights_dict_l2v[i] += [it for it in y]
+      #torch.save(y[0], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
+    tmp_eval_loss, logits = outputs[:2]
+    #pdb.set_trace()
+    #for it in range(12): print(adapter_weights[it][1][0], adapter_weights[it][1][-1])
+    if args.n_gpu > 1:
+      # mean() to average on multi-gpu parallel evaluating
+      tmp_eval_loss = tmp_eval_loss.mean()
 
-      eval_loss += tmp_eval_loss.item()
+    eval_loss += tmp_eval_loss.item()
     nb_eval_steps += 1
     if preds is None:
       preds = logits.detach().cpu().numpy()
@@ -340,11 +231,10 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     else:
       preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
       out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-
-  #pdb.set_trace()
-  #torch.save(masks, "{}_masks.ckpt".format(lang))
-  #for i in range(12):
-  #  torch.save(weights_dict[i], "{}_fusion_l{}.ckpt".format(lang,str(i)))
+    #torch.save(masks, "{}_masks_em.ckpt".format(lang))
+    #for i in range(12):
+    #    torch.save(weights_dict_l2v[i], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
+    #    torch.save(weights_dict_fus[i], "{}_fusion_em_l{}.ckpt".format(lang,str(i)))
   if nb_eval_steps == 0:
     results = {k: 0 for k in ["loss", "precision", "recall", "f1"]}
   else:
@@ -355,24 +245,39 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
-
+    fout_list = []
+    fpred_list = []
+    
     for i in range(out_label_ids.shape[0]):
       for j in range(out_label_ids.shape[1]):
         if out_label_ids[i, j] != pad_token_label_id:
           out_label_list[i].append(label_map[out_label_ids[i][j]])
           preds_list[i].append(label_map[preds[i][j]])
+          fout_list.append(label_map[out_label_ids[i][j]])
+          fpred_list.append(label_map[preds[i][j]])
 
     results = {
       "loss": eval_loss,
       "precision": precision_score(out_label_list, preds_list),
       "recall": recall_score(out_label_list, preds_list),
-      "f1": f1_score(out_label_list, preds_list)
+      "f1": f1_score(out_label_list, preds_list, average="micro"),
+      "macro": f1_score(out_label_list, preds_list, average="macro")
     }
 
   if print_result:
     logger.info("***** Evaluation result %s in %s *****" % (prefix, lang))
     for key in sorted(results.keys()):
       logger.info("  %s = %s", key, str(results[key]))
+    #cm = pycm.ConfusionMatrix(actual_vector=fout_list, predict_vector=fpred_list)
+    #print(cm)
+  with open(args.outfile, "a") as f:
+    write_st = lang+" "+str(results["f1"])+"\n"
+    f.write(write_st)
+  with open(lang+".txt", "w") as f:
+      for g,p in zip(out_label_list,preds_list):
+          for x,y in zip(g,p):
+              f.write(x+"\t"+y+"\n")
+          f.write("\n")
   return results, preds_list
 
 
@@ -380,7 +285,6 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
 def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, lang, lang2id=LANG2ID, few_shot=-1):
   # Make sure only the first process in distributed training process
   # the dataset, and the others will use the cache
-  labels2labels = {1:0, 2:1, 3:2, 5:3, 6:4, 7:5, 8:6, -100:-100}
   if args.local_rank not in [-1, 0] and not evaluate:
     torch.distributed.barrier()
 
@@ -432,12 +336,7 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
 
   if few_shot > 0 and mode == 'train':
     logger.info("Original no. of examples = {}".format(len(features)))
-    #features = features[: few_shot]
-    fewshot_features_file = os.path.join(args.data_dir, "fewShotcached_{}_{}_{}_{}_size{}".format(mode, lang,
-      list(filter(None, args.model_name_or_path.split("/"))).pop(),
-      str(args.max_seq_length), few_shot))
-    #pdb.set_trace()
-    features = torch.load(fewshot_features_file)
+    features = features[: few_shot]
     logger.info('Using few-shot learning on {} examples'.format(len(features)))
 
   # Convert to Tensors and build dataset
@@ -445,8 +344,6 @@ def load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode, l
   all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
   all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
   all_label_ids = torch.tensor([f.label_ids for f in features], dtype=torch.long)
-  if mode=='train':
-    all_label_ids.apply_(lambda x: labels2labels[x])
   if args.l2v and features[0].langs is not None:
     all_langs = torch.tensor([f.langs for f in features], dtype=torch.long)
     logger.info('all_langs[0] = {}'.format(all_langs[0]))
@@ -485,9 +382,6 @@ class ModelArguments:
         default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
     )
     output_dir: str = field(
-        default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
-    )
-    write_dir: str = field(
         default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
     )
     max_seq_length: Optional[int] = field(
@@ -542,8 +436,11 @@ class ModelArguments:
     test_adapter: Optional[bool] = field(default=False)
     rf: Optional[int] = field(default=4)
     adapter_weight: Optional[str] = field(default=None)
-
+    outfile: Optional[str] = field(default=None)
     calc_weight_step: Optional[int] = field(default=0)
+    calc_step: Optional[int] = field(default=1)
+    emea_lr: Optional[float] = field(default=1.0)
+    em_scale: Optional[float] = field(default=1.0)
     predict_save_prefix: Optional[str] = field(default=None)
 
 # def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None):
@@ -713,7 +610,6 @@ def main():
         reduction_factor=adapter_args.lang_adapter_reduction_factor,
     )
   # load the language adapter from Hub
-  adapter_args.language = 'en,hi,bn,ar,am,sw,wo'
   languages = adapter_args.language.split(",")
   #adapter_names = adapter_args.load_lang_adapter.split(",")
   #assert len(languages) == len(adapter_names)
@@ -732,51 +628,54 @@ def main():
     lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language+"/")
     lang_adapter_names.append(lang_adapter_name)
 
-  pdb.set_trace()
-  adapter_setup_ = Fuse('en','hi','bn','ar','am','sw','wo')
-  model.add_adapter_fusion(adapter_setup_)
-  model.add_adapter(task_name, config=task_adapter_config)
-  model.train_adapter_fusion_TA([task_name], adapter_setup_)
-
-  fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(['en','hi','bn','ar'])
-  print(fusion_path_)
+  #adapter_setup_ = Fuse('en','hi','ar')
+  fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
   model.load_adapter_fusion(fusion_path_)
+  #pdb.set_trace()
+  #model.add_cpg_adapter(cpg_name, AdapterType.text_task, config=task_adapter_config)
   model.load_adapter(load_adapter)
+  #model.train_adapter_final([cpg_name, task_name], lang_adapter_names)
   #model.train_adapter_fusion_TA([task_name], lang_adapter_names)
+  #model.set_active_adapters([lang_adapter_names, [cpg_name,task_name]])
   model.set_active_adapters([lang_adapter_names, task_name])
   adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
-  
   #pdb.set_trace()
   model.to(args.device)
+  output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
+  with open(output_test_results_file, "a") as result_writer:
+    for lang in args.predict_langs.split(','):
+      if not os.path.exists(os.path.join(args.data_dir, lang, 'test.{}'.format(args.model_name_or_path))):
+        logger.info("Language {} does not exist".format(lang))
+        continue
+      adapter_weight = None
+      if not args.adapter_weight:
+        if (adapter_args.train_adapter or args.test_adapter) and not args.adapter_weight:
+          pass
+    
+      else:
+        if args.adapter_weight != "0":
+            adapter_weight = [float(w) for w in args.adapter_weight.split(",")]
+        pdb.set_trace()
+        model.set_active_adapters([lang_adapter_names, [task_name]])
+      result, predictions = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="test", lang=lang, adap_ids=adap_ids, lang2id=lang2id, adapter_weight=adapter_weight, lang_adapter_names=lang_adapter_names, task_name=task_name, calc_weight_step=args.calc_weight_step)
 
-  train_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode="train", lang=args.train_langs, lang2id=lang2id, few_shot=args.few_shot)
-  global_step, tr_loss = train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lang_adapter_names, task_name, adap_ids, lang2id)
-  if args.do_train and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-    # Create output directory if needed
-    if not os.path.exists(args.write_dir) and args.local_rank in [-1, 0]:
-      os.makedirs(args.write_dir)
+      # Save results
+      if args.predict_save_prefix is not None:
+        result_writer.write("=====================\nlanguage={}_{}\n".format(args.predict_save_prefix, lang))
+      else:
+        result_writer.write("=====================\nlanguage={}\n".format(lang))
+      for key in sorted(result.keys()):
+        result_writer.write("{} = {}\n".format(key, str(result[key])))
+      # Save predictions
+      if args.predict_save_prefix is not None:
+        output_test_predictions_file = os.path.join(args.output_dir, "test_{}_{}_predictions.txt".format(args.predict_save_prefix, lang))
+      else:
+        output_test_predictions_file = os.path.join(args.output_dir, "test_{}_predictions.txt".format(lang))
+      infile = os.path.join(args.data_dir, lang, "test.{}".format(args.model_name_or_path))
+      idxfile = infile + '.idx'
+      save_predictions(args, predictions, output_test_predictions_file, infile, idxfile)
 
-    # Save model, configuration and tokenizer using `save_pretrained()`.
-    # They can then be reloaded using `from_pretrained()`
-    # Take care of distributed/parallel training
-    logger.info("Saving model checkpoint to %s", args.write_dir)
-    model_to_save = model.module if hasattr(model, "module") else model
-    if args.do_save_adapters:
-      logging.info("Save adapter")
-      model_to_save.save_all_adapters(args.write_dir)
-    if args.do_save_adapter_fusions:
-      logging.info("Save adapter fusion")
-      model_to_save.save_all_adapter_fusions(args.write_dir)
-    if args.do_save_full_model:
-      logging.info("Save full model")
-      model_to_save.save_pretrained(args.write_dir)
-
-    tokenizer.save_pretrained(args.write_dir)
-
-    # Good practice: save your training arguments together with the model
-    torch.save(args, os.path.join(args.write_dir, "training_args.bin"))
-
-def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=False):
+def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=True):
   # Save predictions
   with open(text_file, "r") as text_reader, open(idx_file, "r") as idx_reader:
     text = text_reader.readlines()
@@ -795,6 +694,8 @@ def save_predictions(args, predictions, output_file, text_file, idx_file, output
         output_line = '\n' if cur_id != prev_id else ''
         if output_word_prediction:
           output_line += line.split()[0] + '\t'
+          output_line += line.split()[1] + '\t'
+          #pdb.set_trace()
         output_line += predictions[example_id].pop(0) + '\n'
         writer.write(output_line)
         prev_id = cur_id

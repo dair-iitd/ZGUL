@@ -25,7 +25,7 @@ import os
 import random
 from dataclasses import dataclass, field
 from typing import Optional
-
+import pycm
 import numpy as np
 import scipy
 import torch
@@ -60,7 +60,7 @@ from transformers import (
 l2l_map={'en':'eng', 'is':'isl', 'de':'deu','fo':'fao', 'got':'got', 'gsw':'gsw', 'da':'dan', 'no':'nor', 'ru':'rus', 'cs':'ces', 'qpm':'bul', 'hsb':'hsb', 'orv':'chu', 'cu':'chu', 'bg':'bul', 'uk':'ukr', 'be':'bel'}
 with open("lang2id.json", "r") as f:
   LANG2ID = json.load(f)
-print(LANG2ID)
+
 for k,v in l2l_map.items():
   LANG2ID[k] = LANG2ID[v]
 logger = logging.getLogger(__name__)
@@ -71,6 +71,79 @@ def set_seed(args):
   torch.manual_seed(args.seed)
   if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
+
+def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights):
+  #pdb.set_trace()
+  calc_step_ = args.calc_step
+  emea_lr_ = args.emea_lr
+  #pdb.set_trace()
+  batch_, max_len_ = adapter_weights[0].shape[0]//2, adapter_weights[0].shape[1]
+  for step_ in range(calc_step_):
+    # for layer_w in adapter_weights:
+    #   try:
+    #     layer_w.requires_grad = True
+    #   except:
+    #     pdb.set_trace()
+    #pdb.set_trace()
+    #model.set_active_adapters([lang_adapter_names, [task_name]])
+    #inputs["adapter_names"] = [lang_adapter_names, [task_name]]
+    #pdb.set_trace()
+    for w in adapter_weights: 
+      #pdb.set_trace()
+      try:
+        assert w.requires_grad == True
+      except:  
+        w.requires_grad = True
+    if step_ > 0:
+      # for w in adapter_weights: 
+      #   w[0].requires_grad = True
+      #   w[1].requires_grad = True
+      #pdb.set_trace()
+      w1_, w2_ = [],[]
+      for it in adapter_weights:
+        #pdb.set_trace()
+        z1,z2=torch.split(it,batch_,0)
+        w1_.append(z1)
+        w2_.append(z2)
+      normed_adapter_weights1 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w1_]
+      normed_adapter_weights2 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w2_]
+      normed_adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(normed_adapter_weights1,normed_adapter_weights2)]
+      inputs["adapter_weights"] = normed_adapter_weights
+      #pdb.set_trace()
+    else:
+      #adapter_weights[0].requires_grad = True
+
+      inputs["adapter_weights"] = adapter_weights
+      
+    #pdb.set_trace()
+    outputs, _ = model(**inputs)
+    #loss, logits, orig_sequence_output = outputs[:3]
+    kept_logits = outputs[-1]
+    #pdb.set_trace()
+    entropy = torch.nn.functional.softmax(kept_logits, dim=1)*torch.nn.functional.log_softmax(kept_logits, dim=1)
+    entropy = -entropy.sum() / kept_logits.size(0)
+    #pdb.set_trace()
+    #adapter_weights[0].requires_grad=True
+    #pdb.set_trace()
+    try:
+      #grads = torch.autograd.grad(entropy, adapter_weights[1:])
+      grads = torch.autograd.grad(entropy, adapter_weights)
+    except:
+      pdb.set_trace()
+    #pdb.set_trace()
+    for i in range(12):
+      #adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i-1].data
+      adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i].data
+    #adapter_weights = deepcopy(normed_adapter_weights)
+    #pdb.set_trace()
+  #pdb.set_trace()
+  if calc_step_ > 0:
+    normed_adapter_weights = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights]
+    inputs["adapter_weights"] = normed_adapter_weights
+  else:
+    inputs["adapter_weights"] = adapter_weights
+  outputs, _  = model(**inputs)
+  return outputs, adapter_weights
 
 def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix="", lang="en", adap_ids=None, lang2id=None, print_result=True, adapter_weight=None, lang_adapter_names=None, task_name=None, calc_weight_step=0):
   eval_dataset = load_and_cache_examples(args, tokenizer, labels, pad_token_label_id, mode=mode, lang=lang, lang2id=lang2id)
@@ -91,52 +164,58 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   nb_eval_steps = 0
   preds = None
   out_label_ids = None
-  model.eval()
   weights1 = []
   masks = []
-  weights_dict = {}
+  weights_dict_fus = {}
+  weights_dict_l2v = {}
+  model.eval()
   for batch in tqdm(eval_dataloader, desc="Evaluating"):
     batch = tuple(t.to(args.device) for t in batch)
 
     if calc_weight_step > 0:
       pdb.set_trace()
       adapter_weight = calc_weight_multi(args, model, batch, lang_adapter_names, task_name, adapter_weight, 0)
-    with torch.no_grad():
-      if args.l2v:
-        batch_size_ = batch[0].shape[0]
-        inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
-            "attention_mask": batch[1],            
+    #with torch.no_grad():
+    if args.l2v:
+      batch_size_ = batch[0].shape[0]
+      inputs = {"input_ids": torch.cat((batch[0],batch[-1], adap_ids.repeat(batch_size_,1).to('cuda:0')),1),
+          "attention_mask": batch[1],            
+          "labels": batch[3]}
+      masks += [it for it in batch[1]]
+      
+    else:
+      inputs = {"input_ids": batch[0],
+            "attention_mask": batch[1],
             "labels": batch[3]}
-        masks += [it for it in batch[1]]
-        
-      else:
-        inputs = {"input_ids": batch[0],
-              "attention_mask": batch[1],
-              "labels": batch[3]}
 
-      if args.model_type != "distilbert":
-        # XLM and RoBERTa don"t use segment_ids
-        inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
-      if args.model_type == 'xlm':
-        inputs["langs"] = batch[4]
-      outputs, adapter_weights= model(**inputs)
-      #for it_ in range(12):
-      #  print(adapter_weights[it_][0][0],adapter_weights[it_][1][0],adapter_weights[it_][1][-1]) 
-      for i in range(12):
-        x,_ = torch.split(adapter_weights[i],batch_size_,0)
-        
-        if i not in weights_dict:
-          weights_dict[i] = []
-        #pdb.set_trace()
-        weights_dict[i] += [it for it in x]
-        #torch.save(y[0], "{}_l2v_l{}.ckpt".format(lang,str(i)))
-      tmp_eval_loss, logits = outputs[:2]
+    if args.model_type != "distilbert":
+      # XLM and RoBERTa don"t use segment_ids
+      inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None
+    if args.model_type == 'xlm':
+      inputs["langs"] = batch[4]
 
-      if args.n_gpu > 1:
-        # mean() to average on multi-gpu parallel evaluating
-        tmp_eval_loss = tmp_eval_loss.mean()
+    outputs, adapter_weights = model(**inputs)
+    #pdb.set_trace()
+    assert len(adapter_weights)==12 and adapter_weights[0] is not None
+    outputs, adapter_weights = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
+    for i in range(12):
+      x,y = torch.split(adapter_weights[i],batch_size_,0)
+      if i not in weights_dict_fus:
+        weights_dict_fus[i] = []
+      if i not in weights_dict_l2v:
+        weights_dict_l2v[i] = []
+      #pdb.set_trace()
+      weights_dict_fus[i] += [it for it in x]
+      weights_dict_l2v[i] += [it for it in y]
+      #torch.save(y[0], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
+    tmp_eval_loss, logits = outputs[:2]
+    #pdb.set_trace()
+    #for it in range(12): print(adapter_weights[it][1][0], adapter_weights[it][1][-1])
+    if args.n_gpu > 1:
+      # mean() to average on multi-gpu parallel evaluating
+      tmp_eval_loss = tmp_eval_loss.mean()
 
-      eval_loss += tmp_eval_loss.item()
+    eval_loss += tmp_eval_loss.item()
     nb_eval_steps += 1
     if preds is None:
       preds = logits.detach().cpu().numpy()
@@ -144,11 +223,10 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     else:
       preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
       out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-
-  #pdb.set_trace()
-  #torch.save(masks, "{}_masks.ckpt".format(lang))
-  #for i in range(12):
-  #  torch.save(weights_dict[i], "{}_fusion_l{}.ckpt".format(lang,str(i)))
+    #torch.save(masks, "{}_masks_em.ckpt".format(lang))
+    #for i in range(12):
+    #    torch.save(weights_dict_l2v[i], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
+    #    torch.save(weights_dict_fus[i], "{}_fusion_em_l{}.ckpt".format(lang,str(i)))
   if nb_eval_steps == 0:
     results = {k: 0 for k in ["loss", "precision", "recall", "f1"]}
   else:
@@ -159,24 +237,39 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
 
     out_label_list = [[] for _ in range(out_label_ids.shape[0])]
     preds_list = [[] for _ in range(out_label_ids.shape[0])]
-
+    fout_list = []
+    fpred_list = []
+    
     for i in range(out_label_ids.shape[0]):
       for j in range(out_label_ids.shape[1]):
         if out_label_ids[i, j] != pad_token_label_id:
           out_label_list[i].append(label_map[out_label_ids[i][j]])
           preds_list[i].append(label_map[preds[i][j]])
+          fout_list.append(label_map[out_label_ids[i][j]])
+          fpred_list.append(label_map[preds[i][j]])
 
     results = {
       "loss": eval_loss,
       "precision": precision_score(out_label_list, preds_list),
       "recall": recall_score(out_label_list, preds_list),
-      "f1": f1_score(out_label_list, preds_list)
+      "f1": f1_score(out_label_list, preds_list, average="micro"),
+      "macro": f1_score(out_label_list, preds_list, average="macro")
     }
 
   if print_result:
     logger.info("***** Evaluation result %s in %s *****" % (prefix, lang))
     for key in sorted(results.keys()):
       logger.info("  %s = %s", key, str(results[key]))
+    #cm = pycm.ConfusionMatrix(actual_vector=fout_list, predict_vector=fpred_list)
+    #print(cm)
+  with open(args.outfile, "a") as f:
+    write_st = lang+" "+str(results["f1"])+"\n"
+    f.write(write_st)
+  with open(lang+".txt", "w") as f:
+      for g,p in zip(out_label_list,preds_list):
+          for x,y in zip(g,p):
+              f.write(x+"\t"+y+"\n")
+          f.write("\n")
   return results, preds_list
 
 
@@ -335,8 +428,10 @@ class ModelArguments:
     test_adapter: Optional[bool] = field(default=False)
     rf: Optional[int] = field(default=4)
     adapter_weight: Optional[str] = field(default=None)
-
+    outfile: Optional[str] = field(default=None)
     calc_weight_step: Optional[int] = field(default=0)
+    calc_step: Optional[int] = field(default=1)
+    emea_lr: Optional[float] = field(default=1.0)
     predict_save_prefix: Optional[str] = field(default=None)
 
 # def setup_adapter(args, adapter_args, model, train_adapter=True, load_adapter=None, load_lang_adapter=None):
@@ -526,12 +621,14 @@ def main():
 
   #adapter_setup_ = Fuse('en','hi','ar')
   fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
-  print(fusion_path_)
   model.load_adapter_fusion(fusion_path_)
-  #model.load_adapter(load_adapter)
+  #pdb.set_trace()
+  #model.add_cpg_adapter(cpg_name, AdapterType.text_task, config=task_adapter_config)
+  model.load_adapter(load_adapter)
+  #model.train_adapter_final([cpg_name, task_name], lang_adapter_names)
   #model.train_adapter_fusion_TA([task_name], lang_adapter_names)
-  #model.set_active_adapters([lang_adapter_names, task_name])
-  model.set_active_adapters([lang_adapter_names])
+  #model.set_active_adapters([lang_adapter_names, [cpg_name,task_name]])
+  model.set_active_adapters([lang_adapter_names, task_name])
   adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
   #pdb.set_trace()
   model.to(args.device)
@@ -551,7 +648,7 @@ def main():
             adapter_weight = [float(w) for w in args.adapter_weight.split(",")]
         pdb.set_trace()
         model.set_active_adapters([lang_adapter_names, [task_name]])
-      result, predictions = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="test", lang=lang, adap_ids=adap_ids, lang2id=lang2id, adapter_weight=adapter_weight, task_name=task_name, calc_weight_step=args.calc_weight_step)
+      result, predictions = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="test", lang=lang, adap_ids=adap_ids, lang2id=lang2id, adapter_weight=adapter_weight, lang_adapter_names=lang_adapter_names, task_name=task_name, calc_weight_step=args.calc_weight_step)
 
       # Save results
       if args.predict_save_prefix is not None:
@@ -569,7 +666,7 @@ def main():
       idxfile = infile + '.idx'
       save_predictions(args, predictions, output_test_predictions_file, infile, idxfile)
 
-def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=False):
+def save_predictions(args, predictions, output_file, text_file, idx_file, output_word_prediction=True):
   # Save predictions
   with open(text_file, "r") as text_reader, open(idx_file, "r") as idx_reader:
     text = text_reader.readlines()
@@ -588,6 +685,8 @@ def save_predictions(args, predictions, output_file, text_file, idx_file, output
         output_line = '\n' if cur_id != prev_id else ''
         if output_word_prediction:
           output_line += line.split()[0] + '\t'
+          output_line += line.split()[1] + '\t'
+          #pdb.set_trace()
         output_line += predictions[example_id].pop(0) + '\n'
         writer.write(output_line)
         prev_id = cur_id
