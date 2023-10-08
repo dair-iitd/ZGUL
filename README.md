@@ -6,7 +6,7 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Fo      | Is | 1 | 0.5  | 76.9 |
 | Got     | Is | 1 | 0.5  | 20.2 |  
 | Gsw     | De | 10 | 0.05 |  64.8 |
-| Germanic Avg. |   |      |  **54**  |
+| Germanic Avg. |   |   |   |  **54**  |
 | Qpm | 5       |    0.5
 | Hsb | 10      |    0.1
 | Orv | 5       |    0.5
