@@ -1,5 +1,5 @@
 # ZGUL
-EM Steps (T) and LR (lr) for various languages (tuned on closest language dev set)-  
+EM Steps (T) and LR (lr) for various languages (tuned on closest language dev set) along with Test F1 scores for each target -  
 
 | Target lang | Closest source lang | T | lr | Target F1 (test) | 
 | :------------ |:---------------:| -----:| -----:| -----:|
