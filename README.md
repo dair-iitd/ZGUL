@@ -1,11 +1,12 @@
 # ZGUL
-Best EM Steps and LR for various languages -  
+EM Steps (T) and LR (lr) for various languages (tuned on closest language dev set)-  
 
-| Lang  | Steps  | LR |
-| :------------ |:---------------:| -----:|
-| Fo      | 10 | 0.05 |
-| Got      | 10        |   0.1|
-| Gsw | 10        |    0.1|
+| Target lang | Closest source lang | T | lr | Target F1 (test) | 
+| :------------ |:---------------:| -----:| -----:| -----:|
+| Fo      | Is | 1 | 0.5  | 76.9 |
+| Got     | Is | 1 | 0.5  | 20.2 |  
+| Gsw     | De | 10 | 0.05 |  64.8 |
+Germanic Avg. F-1 = 54
 | Qpm | 5       |    0.5
 | Hsb | 10      |    0.1
 | Orv | 5       |    0.5
