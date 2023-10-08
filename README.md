@@ -7,9 +7,9 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Got     | Is | 1 | 0.5  | 20.2 |  
 | Gsw     | De | 10 | 0.05 |  64.8 |
 | Germanic Avg. |   |   |   |  **54**  |
-| Qpm     | Ru | 5 | 0.05 | 50.3 |
-| Hsb     | Ru | 5 | 0.05 | 77.1 |
-| Cu     | Ru | 5 | 0.05 | 33.9 |
+| Qpm     | Ru | 5 | 0.05 | 50.1 |
+| Hsb     | Ru | 5 | 0.05 | 77.2 |
+| Cu     | Ru | 5 | 0.05 | 34.1 |
 | Orv      | Ru | 5 | 0.05 |  |
 | Slavic Avg. |   |   |   |    |
 | Hau     | Wol | 5 | 1.0 | 53.6 |
