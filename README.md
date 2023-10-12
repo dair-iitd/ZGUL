@@ -21,4 +21,4 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | African Avg. |   |   |   |   **54.6** |
 | As      | Bn | 5 | 0.1 | 74.4 |
 | Bh      | Hi | 5 | 0.1 | 64.1 |
-| African Avg. |   |   |   |   **69.3** |
+| Indic Avg. |   |   |   |   **69.3** |
