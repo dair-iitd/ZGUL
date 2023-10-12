@@ -1,0 +1,635 @@
+হাউ	B-ORG
+আই	I-ORG
+মে'ট	I-ORG
+ইয়'ৰ	I-ORG
+মাদাৰ	I-ORG
+
+কাৰ্বি	B-LOC
+আংলং	I-LOC
+জিলা	I-LOC
+
+ছত্ৰপতি	B-ORG
+শিৱাজী	I-ORG
+টাৰ্মিনাছ	I-ORG
+
+মাৰ্টিন	B-PER
+লুথাৰ	I-PER
+কিং	I-PER
+,	I-PER
+অনুজ	I-PER
+
+অসম	B-ORG
+চিকিৎসা	I-ORG
+মহাবিদ্যালয়	I-ORG
+
+প্ৰমথেশ	B-PER
+চন্দ্ৰ	I-PER
+বৰুৱা	I-PER
+
+ফ'কাছ	B-ORG
+এন.ই	I-ORG
+.	I-ORG
+
+কুমাৰ	B-PER
+স্বামী	I-PER
+কামৰাজ	I-PER
+নাদাৰ	I-PER
+
+অসম	B-ORG
+চিকিৎসা	I-ORG
+মহাবিদ্যালয়	I-ORG
+
+আন্তৰ্জাতিক	B-ORG
+মান	I-ORG
+সংস্থা	I-ORG
+
+*১৯৮৩	O
+-	O
+দৰং	B-LOC
+জিলাৰ	I-LOC
+গঠন	O
+
+আই	B-LOC
+চি	I-LOC
+চি	I-LOC
+বিশ্ব	I-LOC
+টুৱেন্টি২০	I-LOC
+
+মাৰ্টিন	B-PER
+লুথাৰ	I-PER
+কিং	I-PER
+,	I-PER
+অনুজ	I-PER
+
+ইন্দিৰা	B-ORG
+গান্ধী	I-ORG
+এথলেটিক	I-ORG
+ষ্টেডিয়াম	I-ORG
+
+ৰাষ্ট্ৰসংঘ	B-ORG
+শিক্ষা	I-ORG
+,	I-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+সংস্কৃতি	I-ORG
+সংস্থা	I-ORG
+
+নামেৰি	B-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+উদ্যান	I-ORG
+
+পাব্‌ল	B-PER
+'	I-PER
+পিকাছ	I-PER
+'	I-PER
+
+নৰ্থ	B-ORG
+লখিমপুৰ	I-ORG
+কলেজ	I-ORG
+
+কোকৰাঝাৰ	B-LOC
+জিলা	I-LOC
+,	O
+চিৰাং	B-LOC
+জিলা	I-LOC
+,	O
+ওদালগুৰি	B-LOC
+জিলা	I-LOC
+,	O
+বাক্সা	B-LOC
+জিলা	I-LOC
+
+ভাৰতীয়	B-ORG
+বিজ্ঞান	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+লিঅ'নাৰ্ড	B-PER
+'	I-PER
+দা	I-PER
+ভিন্সি	I-PER
+
+মোহনদাস	B-PER
+কৰমচান্দ	I-PER
+গান্ধী	I-PER
+
+হেম	B-PER
+বৰুৱা	I-PER
+(	I-PER
+ত্যাগবীৰ	I-PER
+)	I-PER
+
+কাৰ্বি	B-LOC
+আংলং	I-LOC
+জিলা	I-LOC
+
+ডিমা	B-LOC
+হাছাও	I-LOC
+জিলা	I-LOC
+
+'	O
+''	O
+এছিয়া	B-LOC
+''	O
+'	O
+
+নিলগৰ	O
+দৰ্গাকনাত	O
+অৱ্স্থিত	O
+,	O
+আনহাতেদি	O
+বিশ্ববিদ্যালয়খনৰ	O
+দ্বিতীয়টো	O
+চৌহদ	O
+কাৰ্বি	B-LOC
+আংলং	I-LOC
+জিলাৰ	I-LOC
+ডিফুত	B-LOC
+অৱস্থিত।	O
+
+বীৰেন্দ্ৰ	B-PER
+কুমাৰ	I-PER
+ভট্টাচাৰ্য	I-PER
+
+ভাৰতীয়	B-ORG
+বিজ্ঞান	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+গাব্ৰিয়েল	B-PER
+গাৰ্ছিয়া	I-PER
+মাৰ্কেছ	I-PER
+
+গোলাঘাট	B-LOC
+জিলা	I-LOC
+,	O
+মৰিগাঁও	B-ORG
+জিলা	I-ORG
+,	O
+নগাঁও	B-LOC
+জিলা	I-LOC
+,	O
+ডিফু	B-LOC
+
+আই	B-LOC
+চি	I-LOC
+চি	I-LOC
+বিশ্ব	I-LOC
+টুৱেন্টি২০	I-LOC
+
+১৯৮৯	O
+চনৰ	O
+আজিৰ	O
+দিনটোতে	O
+প্ৰধান	O
+মন্ত্ৰী	O
+পদৰ	O
+পৰা	O
+ৰাজীৱ	B-PER
+গান্ধীয়ে	I-PER
+পদত্যাগ	O
+কৰে।	O
+
+আই	B-LOC
+চি	I-LOC
+চি	I-LOC
+বিশ্ব	I-LOC
+টুৱেন্টি২০	I-LOC
+
+ই	O
+প্ৰধানকৈ	O
+এছিয়া	B-LOC
+আৰু	O
+আফ্ৰিকাত	B-LOC
+বিস্তৃত	O
+হৈ	O
+আছে৷	O
+
+বাক্সা	B-LOC
+জিলা	I-LOC
+,	O
+ওদালগুৰি	B-LOC
+জিলা	I-LOC
+
+৫৩	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+বগাপতীয়া	B-LOC
+খুকুৰী	I-LOC
+সাপ	I-LOC
+
+ভাৰতীয়	B-LOC
+নাগৰিকত্ব	I-LOC
+আইন	I-LOC
+
+লিঅ'নাৰ্ড	B-PER
+'	I-PER
+দা	I-PER
+ভিন্সি	I-PER
+
+তথ্য	B-ORG
+জনাৰ	I-ORG
+অধিকাৰ	I-ORG
+আইন	I-ORG
+,	I-ORG
+২০০৫	I-ORG
+
+গুৱাহাটী	B-ORG
+বিশ্ববিদ্যালয়ৰ	I-ORG
+অধিনত	O
+এই	O
+প্ৰতিষ্ঠানখনে	O
+স্নাতক	O
+আৰু	O
+স্নাতকোত্তৰ	O
+পৰ্যায়ত	O
+পাঠ্যক্ৰম	O
+আগবঢ়ায়।	O
+
+সুন্দৰবন	B-LOC
+ৰাষ্ট্ৰীয়	I-LOC
+উদ্যান	I-LOC
+
+ৰাষ্ট্ৰসংঘ	B-ORG
+শিক্ষা	I-ORG
+,	I-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+সংস্কৃতি	I-ORG
+সংস্থা	I-ORG
+
+অষ্ট্ৰেলিয়া	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+৩৯	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+*আৰ্চ	O
+মাহমোদ	O
+(	O
+মুম্বাই	B-LOC
+)	O
+
+দীৰ্ঘসময়	O
+শাৰিৰীক	O
+অসুস্থতাত	O
+ভূগাৰ	O
+পাছত	O
+অসম	B-ORG
+চিকিৎসা	I-ORG
+মহাবিদ্যালয়ত	I-ORG
+চিকিৎসাধীন	O
+অৱস্থাত	O
+১৯৬৬	O
+চনৰ	O
+১১	O
+নৱেম্বৰত	O
+তেখেতৰ	O
+মৃত্যু	O
+হয়।	O
+
+মেৰিলিন	B-PER
+মন্‌ৰ	I-PER
+'	I-PER
+
+কাৰ্ল	B-PER
+ফ্ৰিডৰিখ	I-PER
+গাউছ	I-PER
+
+চালভাড	B-PER
+'	I-PER
+ডালি	I-PER
+
+দৰং	B-ORG
+মহাবিদ্যালয়	I-ORG
+,	O
+তেজপুৰ	B-LOC
+
+লিঅ'নাৰ্ড	B-PER
+'	I-PER
+দা	I-PER
+ভিন্সি	I-PER
+
+ক্যিন	B-PER
+ছি	I-PER
+হোৱং	I-PER
+
+টি	B-PER
+ভি	I-PER
+ৰামকৃষ্ণন	I-PER
+
+পুৰুষোত্তম	B-PER
+দাস	I-PER
+টেণ্ডন	I-PER
+
+নৰসিংহ	B-LOC
+(	I-LOC
+উদ্ভিদ	I-LOC
+)	I-LOC
+
+পাব্‌ল	B-PER
+'	I-PER
+পিকাছ	I-PER
+'	I-PER
+
+e.	O
+neglecta	O
+''	O
+ইণ্ডোনেছিয়াত	B-LOC
+পোৱা	O
+যায়৷	O
+
+হাউ	B-ORG
+আই	I-ORG
+মে'ট	I-ORG
+ইয়'ৰ	I-ORG
+মাদাৰ	I-ORG
+
+শিলচৰ	B-ORG
+(	I-ORG
+লোকসভা	I-ORG
+সমষ্টি	I-ORG
+)	I-ORG
+
+মেৰিলিন	B-PER
+মন্‌ৰ	I-PER
+'	I-PER
+
+২০০৪	O
+চনৰ	O
+আজিৰ	O
+দিনটোতে	O
+অসমৰ	B-LOC
+হোৱা	O
+প্ৰৱল	O
+বানপানীৰ	O
+ফলত	O
+২০০	O
+তকৈও	O
+অধিক	O
+লোকৰ	O
+মৃত্যু	O
+হয়	O
+।	O
+
+তদুপৰি	O
+কলম্বাছে	O
+অক্ষাংশ	O
+আৰু	O
+দ্ৰাঘিমাংশৰ	O
+ক্ষেত্ৰত	O
+সেইদিনত	O
+থকা	O
+কিছু	O
+ভূল	O
+ধাৰণাৰ	O
+বাবে	O
+কেনাৰী	O
+দ্বীপৰ	O
+পৰা	O
+জাপানৰ	B-LOC
+দূৰত্ব	O
+৩৭০০	O
+কিল’মিটাৰ	O
+বুলি	O
+ভাবিছিল	O
+৷কিন্তু	O
+আধুনিক	O
+বিশেষজ্ঞৰ	O
+মতে	O
+প্ৰকৃত	O
+দূৰত্ব	O
+১২	O
+,	O
+৫০০	O
+কিল’মিটাৰ	O
+৷	O
+
+মলয়া	B-PER
+গোস্বামী	I-PER
+(	O
+খেৰসূতী	O
+)	O
+
+পঞ্জাব	B-LOC
+,	I-LOC
+ভাৰত	I-LOC
+
+লিঅ'নাৰ্ড	B-PER
+'	I-PER
+দা	I-PER
+ভিন্সি	I-PER
+
+তথ্য	B-ORG
+জনাৰ	I-ORG
+অধিকাৰ	I-ORG
+আইন	I-ORG
+,	I-ORG
+২০০৫	I-ORG
+
+c.	O
+maroccanus	O
+''	O
+-উত্তৰ-পশ্চিম	O
+আফ্ৰিকা	B-LOC
+
+ডলফিন	B-ORG
+ফিল্মছ	I-ORG
+প্ৰাইভেট	I-ORG
+লিমিটেড	I-ORG
+
+আন্তৰ্জাতিক	B-ORG
+মান	I-ORG
+সংস্থা	I-ORG
+
+ভাৰতীয়	B-ORG
+বিজ্ঞান	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+শৰৎ	B-PER
+চন্দ্ৰ	I-PER
+সিংহ	I-PER
+
+১৯	B-LOC
+মে	I-LOC
+'	I-LOC
+
+পঞ্জাব	B-LOC
+,	I-LOC
+ভাৰত	I-LOC
+
+মাটিকালি	B-ORG
+অনুসৰি	I-ORG
+দেশসমূহৰ	I-ORG
+তালিকা	I-ORG
+(	I-ORG
+ভৌগোলিক	I-ORG
+)	I-ORG
+
+২২৯	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+মৰাণ	B-LOC
+(	I-LOC
+নগৰ	I-LOC
+)	I-LOC
+
+লিঅ'নাৰ্ড	B-PER
+'	I-PER
+দা	I-PER
+ভিন্সি	I-PER
+
+ভাৰতীয়	B-ORG
+প্ৰযুক্তিবিদ্যা	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+,	I-ORG
+গুৱাহাটী	I-ORG
+
+*আলেখ্য	O
+প্ৰতিযোগিতাত	O
+অংশগ্ৰহণৰ	O
+বাবে	O
+জাপান	B-LOC
+ভ্ৰমণ	O
+(	O
+১৯৭৯	O
+)	O
+
+ঢেকীয়াখোৱা	B-LOC
+বৰ	I-LOC
+নামঘৰ	I-LOC
+
+অৰুণাচল	B-ORG
+পূব	I-ORG
+(	I-ORG
+লোকসভা	I-ORG
+সমষ্টি	I-ORG
+)	I-ORG
+
+ৰাজীৱ	B-PER
+গান্ধী	I-PER
+পুৰস্কাৰ-	O
+১৯৯৭	O
+
+নৰসিংহ	B-LOC
+(	I-LOC
+উদ্ভিদ	I-LOC
+)	I-LOC
+
+''কংগ্ৰেছ	O
+''	O
+ভাৰতীয়	B-ORG
+জাতীয়	I-ORG
+কংগ্ৰেছ	I-ORG
+
+মামণি	B-PER
+ৰয়ছম	I-PER
+গোস্বামী	I-PER
+
+'	O
+''	O
+''কলাগুৰু	O
+''	O
+'	O
+''	O
+বিষ্ণুপ্ৰসাদ	B-PER
+ৰাভা	I-PER
+
+৩৭	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+অসম	B-ORG
+সাহিত্য	I-ORG
+সভা	I-ORG
+
+(	O
+নেডাৰলেণ্ডছ	O
+/	O
+বৰ্তমানৰ	O
+ইণ্ডোনেছিয়া	B-LOC
+)	O
+
+ভীমৰাও	B-PER
+ৰামজী	I-PER
+আম্বেদকাৰ	I-PER
+
+প্ৰতিমা	B-PER
+বৰুৱা	I-PER
+পাণ্ডে	I-PER
+
+আপাৰ	O
+হ্ৰদ	O
+(	O
+ভুপাল	O
+)	O
+,	O
+মধ্য	B-LOC
+প্ৰদেশ	I-LOC
+
+ডিব্ৰুগড়	B-LOC
+জিলা	I-LOC
+,	O
+তিনিচুকীয়া	B-LOC
+জিলা	I-LOC
+
+ইণ্ডিয়ান	B-ORG
+চুপাৰ	I-ORG
+লীগ	I-ORG
+
+১৯৬৫	O
+চনৰ	O
+আজিৰ	O
+দিনটোতে	O
+বাংলাদেশৰ	B-LOC
+প্ৰচণ্ড	O
+ঘূৰ্ণীবতাহে	O
+কোবাই	O
+যায়	O
+৷	O
+ইয়াৰ	O
+ফলত	O
+চৰকৰী	O
+হিচাপমতে	O
+১৬	O
+,	O
+০০০	O
+লোকৰ	O
+মৃত্যু	O
+হয়	O
+৷	O
+
+আজি	O
+বিশ্ব	B-ORG
+মানসিক	I-ORG
+স্বাস্থ্য	I-ORG
+দিৱস	I-ORG
+।	O
+
+চালভাড	B-PER
+'	I-PER
+ডালি	I-PER
+
+পাব্‌ল	B-PER
+'	I-PER
+পিকাছ	I-PER
+'	I-PER

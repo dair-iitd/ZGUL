@@ -14,25 +14,25 @@
 # limitations under the License.
 
 REPO=$PWD
-GPU=${3:-0,1}
-MODEL=${4:-bert-base-multilingual-cased}
+GPU=${7:-0}
+MODEL=${8:-bert-base-multilingual-cased}
 DATA_DIR=${5:-"$REPO/data/"}
 OUT_DIR=${6:-"$REPO/outputs/"}
 
 export CUDA_VISIBLE_DEVICES=$GPU
 
 TASK='panx'
-LANGS="as,bh"
-#LANGS="no,da"
-#LANGS="qpm,hsb,orv,cu"
-TRAIN_LANGS="en,hi,bn,ur"
+#LANGS="gsw"
+#LANGS="be,uk,bg"
+LANGS=$1
+TRAIN_LANGS="en,is,de"
 
 NUM_EPOCHS=1
 MAX_LENGTH=128
 LR=1e-4
 BPE_DROP=0
-ADAPTER_LANG="en,hi,bn,ar"
-LANG_ADAPTER_NAME="en/wiki@ukp,hi/wiki@ukp,bn/wiki@ukp,ar/wiki@ukp"
+ADAPTER_LANG="en_ner,hi,bn,ur"
+LANG_ADAPTER_NAME="en/wiki@ukp,am/wiki@ukp,sw/wiki@ukp"
 LC=""
 if [ $MODEL == "bert-base-multilingual-cased" ]; then
   MODEL_TYPE="bert"
@@ -52,17 +52,19 @@ else
 fi
 
 DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/ours"
-RF=3
-for SEED in 2;
-do
-OUTPUT_DIR="output/panx/bert-base-multilingual-cased-LR1e-4-epoch15-MaxLen128-TrainLangen,hi,bn,ur-Rf4_en,hi,bn,ar_s1_cosine/checkpoint-best-15/"
-OUTFILE="$1_$2_indic_mbert.txt"
-python analysis/entropy/run_test_pos_em.py \
+SEED=1
+
+RF=$4
+OUTPUT_DIR="ckpt/indic/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,hi,bn,ur-Rf3_en_ner,hi,bn,ur_s42_zgul_slavic/checkpoint-best-10/"
+#OUTPUT_DIR="output/mlm/shiva/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf${RF}_en_conll,am,sw,wo_s42_zgul_load_${LANGS}/checkpoint-best-10/"
+#OUTPUT_DIR="output/mlm/masa/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf4_en_conll,am,sw,wo_s42_lanvec_plus_load_${LANGS}_mlm/checkpoint-best-10/"
+OUTFILE="$2_$3_masa_tied.txt"
+python run_test_ner_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
   --data_dir $DATA_DIR \
   --model_type $MODEL_TYPE \
-  --labels $DATA_DIR/labels.txt \
+  --labels $DATA_DIR/labels1.txt \
   --model_name_or_path $MODEL \
   --output_dir $OUTPUT_DIR \
   --max_seq_length  $MAX_LENGTH \
@@ -79,13 +81,12 @@ python analysis/entropy/run_test_pos_em.py \
   --overwrite_output_dir \
   --test_adapter \
   --adapter_config pfeiffer \
-  --task_name "ner" \
+  --task_name "pos" \
   --lang_adapter_config pfeiffer \
   --language $ADAPTER_LANG \
   --l2v \
   --outfile $OUTFILE \
-  --calc_step $1 \
-  --emea_lr $2 \
+  --calc_step $2 \
+  --emea_lr $3 \
   --load_lang_adapter $LANG_ADAPTER_NAME \
   --rf $RF
-done

@@ -1,0 +1,564 @@
+হাউ	B-ORG
+আই	I-ORG
+মে'ট	I-ORG
+ইয়'ৰ	I-ORG
+মাদাৰ	I-ORG
+
+১৫৩	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+ভবেন্দ্ৰ	B-PER
+নাথ	I-PER
+শইকীয়া	I-PER
+
+অষ্ট্ৰেলিয়া	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+হেম	B-PER
+বৰুৱা	I-PER
+(	I-PER
+ত্যাগবীৰ	I-PER
+)	I-PER
+
+পাব্‌ল	B-PER
+'	I-PER
+পিকাছ	I-PER
+'	I-PER
+
+গোলাপ	B-PER
+বৰবৰা	I-PER
+/	O
+যোগেন্দ্ৰ	B-PER
+নাথ	I-PER
+হাজৰিকা	I-PER
+
+৩৭এ	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+অষ্ট্ৰেলিয়া	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+চালভাড	B-PER
+'	I-PER
+ডালি	I-PER
+
+জোনাকী	B-ORG
+(	I-ORG
+দ্ব্যৰ্থতা	I-ORG
+দূৰীকৰণ	I-ORG
+পৃষ্ঠা	I-ORG
+)	I-ORG
+
+সংঘ	B-ORG
+লোক	I-ORG
+সেৱা	I-ORG
+আয়োগ	I-ORG
+(	I-ORG
+ইউ.	I-ORG
+পি.	I-ORG
+এছ.	I-ORG
+চি	I-ORG
+.	I-ORG
+)	I-ORG
+
+যোৰহাট	B-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+প্ৰযুক্তিবিদ্যা	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+চালভাড	B-PER
+'	I-PER
+ডালি	I-PER
+
+যোৰহাট	B-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+প্ৰযুক্তিবিদ্যা	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+এম	B-PER
+জি	I-PER
+ৰামচন্দ্ৰন	I-PER
+
+এম	B-PER
+জি	I-PER
+ৰামচন্দ্ৰন	I-PER
+
+প্ৰফুল্ল	B-PER
+কুমাৰ	I-PER
+মহন্ত	I-PER
+
+সন্মানীয়	O
+অধ্যাপক	O
+,	O
+জৱাহৰলাল	B-ORG
+নেহৰু	I-ORG
+উন্নত	I-ORG
+বৈজ্ঞানিক	I-ORG
+গৱেষণা	I-ORG
+কেন্দ্ৰ	I-ORG
+,	O
+বাংগালোৰ	B-LOC
+(	O
+১৯৯৮-২০০১	O
+)	O
+।	O
+
+ভাৰতীয়	B-LOC
+মান	I-LOC
+সময়	I-LOC
+
+'	O
+''	O
+''শ্ৰী	O
+হৰ্ষ	O
+''	O
+'	O
+''	O
+আনন্দ	B-PER
+চন্দ্ৰ	I-PER
+আগৰৱালা	I-PER
+
+ভিমেশ্বৰ	B-ORG
+ধাম	I-ORG
+,	O
+গুৱাহাটী	B-LOC
+
+মহেন্দ্ৰ	B-PER
+সিং	I-PER
+ধোনি	I-PER
+
+কৰ্ণ	B-ORG
+(	I-ORG
+অংগ	I-ORG
+)	I-ORG
+
+নামেৰি	B-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+উদ্যান	I-ORG
+
+শৰৎ	B-PER
+চন্দ্ৰ	I-PER
+সিংহ	I-PER
+
+অষ্ট্ৰেলিয়া	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+১৯৯৫	O
+,	O
+ফিল্মফেয়াৰ	B-ORG
+লাক্স	O
+নতুন	O
+মুখ	O
+বঁটা-	O
+''আগ	O
+''	O
+
+পিয়েৰী	B-PER
+দি	I-PER
+ফাৰ্মা	I-PER
+
+স্ক্ৰেচ্ছ্‌	B-ORG
+(	I-ORG
+প্ৰগ্ৰামিং	I-ORG
+লেংগুৱেজ	I-ORG
+)	I-ORG
+
+গাব্ৰিয়েল	B-PER
+গাৰ্ছিয়া	I-PER
+মাৰ্কেছ	I-PER
+
+মেৰিলিন	B-PER
+মন্‌ৰ	I-PER
+'	I-PER
+
+অসম	B-ORG
+মাধ্যমিক	I-ORG
+শিক্ষা	I-ORG
+পৰিষদ	I-ORG
+
+ডিব্ৰু-ছৈখোৱা	B-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+উদ্যান	I-ORG
+
+অসমৰ	B-ORG
+মুখ্যমন্ত্ৰীসকলৰ	I-ORG
+তালিকা	I-ORG
+
+ভাৰতীয়	B-ORG
+জাতীয়	I-ORG
+কংগ্ৰেছ	I-ORG
+
+কাশ্মীৰি	B-PER
+শইকীয়া	I-PER
+বৰুৱা	I-PER
+
+নৰসিংহ	B-LOC
+(	I-LOC
+উদ্ভিদ	I-LOC
+)	I-LOC
+
+মাৰ্টিন	B-PER
+লুথাৰ	I-PER
+কিং	I-PER
+,	I-PER
+অনুজ	I-PER
+
+কৰ্ণ	B-ORG
+(	I-ORG
+অংগ	I-ORG
+)	I-ORG
+
+কামৰূপ	B-LOC
+মহানগৰ	I-LOC
+জিলা	I-LOC
+
+অনুৰাধা	B-PER
+শৰ্মা	I-PER
+পূজাৰী	I-PER
+,	O
+পূৰ্বৰ	O
+সম্পাদক	O
+হোমেন	B-PER
+বৰগোহাঞি	I-PER
+
+চত্তীছগড়ৰ	B-ORG
+মুখ্যমন্ত্ৰীসকলৰ	I-ORG
+তালিকা	I-ORG
+
+ভাৰতীয়	B-LOC
+নাগৰিকত্ব	I-LOC
+আইন	I-LOC
+
+'	O
+''	O
+এছিয়া	B-LOC
+''	O
+'	O
+
+দ্য	B-ORG
+আছাম	I-ORG
+ট্ৰিবিউন	I-ORG
+
+নৱগ্ৰহ	B-ORG
+মন্দিৰ	I-ORG
+,	I-ORG
+গুৱাহাটী	I-ORG
+
+হেমচন্দ্ৰ	B-PER
+গোস্বামী	I-PER
+(	O
+১৮৭২-১৯২৮	O
+)	O
+
+এই	O
+ভেকুলীবিধ	O
+ঘাইকৈ	O
+বাংলাদেশ	B-LOC
+,	O
+ভাৰত	B-LOC
+,	O
+ম্যানমাৰ	B-ORG
+,	O
+নেপাল	B-LOC
+আৰু	O
+ভূটান	B-LOC
+আদি	O
+দেশত	O
+দেখা	O
+পোৱা	O
+যায়৷	O
+
+নীলমণি	B-PER
+ফুকন	I-PER
+(	I-PER
+জ্যেষ্ঠ	I-PER
+)	I-PER
+
+বুঢ়া	B-LOC
+চাপৰি	I-LOC
+অভয়াৰণ্য	I-LOC
+
+মানবেন্দ্ৰ	B-PER
+নাথ	I-PER
+ৰয়	I-PER
+
+ফ'কাছ	B-ORG
+এন.ই	I-ORG
+.	I-ORG
+
+'	O
+''	O
+তেজপুৰ	B-LOC
+(	O
+০	O
+কি.মি	O
+.	O
+
+বেংকক	B-LOC
+(	O
+'	O
+''	O
+'	O
+)	O
+
+আমেৰিকা	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+কাজিৰঙা	B-LOC
+ৰাষ্ট্ৰীয়	I-LOC
+উদ্যান	I-LOC
+
+পঞ্জাব	B-LOC
+,	I-LOC
+ভাৰত	I-LOC
+
+ক্যিন	B-PER
+ছি	I-PER
+হোৱং	I-PER
+
+অনুৰাধা	B-PER
+শৰ্মা	I-PER
+পূজাৰী	I-PER
+
+মোহনদাস	B-PER
+কৰমচান্দ	I-PER
+গান্ধী	I-PER
+
+যোৰহাট	B-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+প্ৰযুক্তিবিদ্যা	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+মোহন	B-ORG
+বাগান	I-ORG
+এথলেটিক	I-ORG
+ক্লাব	I-ORG
+
+পাব্‌ল	B-PER
+'	I-PER
+পিকাছ	I-PER
+'	I-PER
+
+গ্ৰেগৰী	B-PER
+ক'ৰ্ছ	I-PER
+'	I-PER
+
+অসম	B-ORG
+গণ	I-ORG
+পৰিষদ	I-ORG
+(	I-ORG
+প্ৰগতিশীল	I-ORG
+)	I-ORG
+
+ভাৰতীয়	B-LOC
+মান	I-LOC
+সময়	I-LOC
+
+c.	O
+coturnix	O
+''	O
+আফ্ৰিকা	B-LOC
+আৰু	O
+ভাৰতত	B-LOC
+পোৱা	O
+যায়	O
+
+মেৰিলিন	B-PER
+মন্‌ৰ	I-PER
+'	I-PER
+
+ৰঞ্জিৎ	B-PER
+শেখৰ	I-PER
+মুছাহাৰী	I-PER
+-	O
+মেঘালয়	B-LOC
+,	O
+(	O
+২০০৮-২০১৩	O
+)	O
+
+যোগেন্দ্ৰ	B-PER
+নাথ	I-PER
+হাজৰিকা	I-PER
+
+তথ্য	B-ORG
+জনাৰ	I-ORG
+অধিকাৰ	I-ORG
+আইন	I-ORG
+,	I-ORG
+২০০৫	I-ORG
+
+কুমাৰ	B-PER
+ভাস্কৰ	I-PER
+বৰ্মা	I-PER
+
+বৰ্ষাৰণ্য	B-ORG
+গৱেষণা	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+,	I-ORG
+যোৰহাট	I-ORG
+
+৩৬	B-ORG
+নং	I-ORG
+ৰাষ্ট্ৰীয়	I-ORG
+ঘাইপথ	I-ORG
+(	I-ORG
+ভাৰত	I-ORG
+)	I-ORG
+
+যোৰহাট	B-ORG
+মহাবিদ্যালয়	I-ORG
+(	I-ORG
+একত্ৰিত	I-ORG
+)	I-ORG
+
+আমেৰিকা	B-LOC
+(	I-LOC
+মহাদেশ	I-LOC
+)	I-LOC
+
+উত্তৰ-পূব	B-ORG
+সীমান্ত	I-ORG
+ৰেলৱে	I-ORG
+
+*১৯৮৭	O
+চনত	O
+অসম	B-ORG
+সাহিত্য	I-ORG
+সভাৰ	I-ORG
+পাঠশালা	B-LOC
+অধিৱেশনৰ	O
+সভাপতি।	O
+
+ক্যিন	B-PER
+ছি	I-PER
+হোৱং	I-PER
+
+গাব্ৰিয়েল	B-PER
+গাৰ্ছিয়া	I-PER
+মাৰ্কেছ	I-PER
+
+বাৰেচহৰীয়া	B-ORG
+ভাওনা	I-ORG
+মহোৎসৱ	I-ORG
+
+হাউ	B-ORG
+আই	I-ORG
+মে'ট	I-ORG
+ইয়'ৰ	I-ORG
+মাদাৰ	I-ORG
+
+ক্যিন	B-PER
+ছি	I-PER
+হোৱং	I-PER
+
+ভাৰতীয়	B-LOC
+নাগৰিকত্ব	I-LOC
+আইন	I-LOC
+
+মাৰ্টিন	B-PER
+লুথাৰ	I-PER
+কিং	I-PER
+,	I-PER
+অনুজ	I-PER
+
+আই	B-LOC
+চি	I-LOC
+চি	I-LOC
+বিশ্ব	I-LOC
+টুৱেন্টি২০	I-LOC
+
+ভাৰতীয়	B-LOC
+মান	I-LOC
+সময়	I-LOC
+
+কাঠমাণ্ডু	B-LOC
+(	O
+'	O
+''	O
+'	O
+)	O
+
+ভাৰতীয়	B-LOC
+মান	I-LOC
+সময়	I-LOC
+
+ক্যিন	B-PER
+ছি	I-PER
+হোৱং	I-PER
+
+অসম	B-ORG
+গণ	I-ORG
+পৰিষদ	I-ORG
+
+অসম	B-ORG
+গণ	I-ORG
+পৰিষদ	I-ORG
+
+ফ'কাছ	B-ORG
+এন.ই	I-ORG
+.	I-ORG
+
+মফিজুদ্দিন	B-PER
+আহমদ	I-PER
+হাজৰিকা	I-PER
+
+সংঘ	B-ORG
+লোক	I-ORG
+সেৱা	I-ORG
+আয়োগ	I-ORG
+(	I-ORG
+ইউ.	I-ORG
+পি.	I-ORG
+এছ.	I-ORG
+চি	I-ORG
+.	I-ORG
+)	I-ORG
+
+ৰাষ্ট্ৰসংঘ	B-ORG
+শিক্ষা	I-ORG
+,	I-ORG
+বিজ্ঞান	I-ORG
+আৰু	I-ORG
+সংস্কৃতি	I-ORG
+সংস্থা	I-ORG
+
+*ভুখী	O
+পীঢ়ী	O
+(	O
+নেপালী	B-ORG
+ভাষা	I-ORG
+)	O
+
+জ্যোতি	B-ORG
+চিত্ৰবন	I-ORG
+চলচ্চিত্ৰ	I-ORG
+আৰু	I-ORG
+টেলিভিশ্যন	I-ORG
+প্ৰশিক্ষণ	I-ORG
+প্ৰতিষ্ঠান	I-ORG
+
+ভাৰতীয়	B-LOC
+নাগৰিকত্ব	I-LOC
+আইন	I-LOC
