@@ -10,8 +10,8 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Qpm     | Ru | 5 | 0.05 | 50.1 |
 | Hsb     | Ru | 5 | 0.05 | 77.2 |
 | Cu     | Ru | 5 | 0.05 | 34.1 |
-| Orv      | Ru | 5 | 0.05 |  |
-| Slavic Avg. |   |   |   |    |
+| Orv      | Ru | 5 | 0.05 | 63 |
+| Slavic Avg. |   |   |   |  56.1  |
 | Hau     | Wo | 5 | 1.0 | 53.6 |
 | Ibo     | Sw | 10 | 1.0 | 56.8 |
 | Kin     | Sw | 10 | 1.0 | 56.2 |
@@ -19,3 +19,6 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Luo      | Wo | 5 | 1.0 | 40.2 |
 | Pcm      | En | 10 | 0.5 | 66.5 |
 | African Avg. |   |   |   |   **54.6** |
+| As      | Bn | 5 | 0.1 | 74.4 |
+| Bh      | Hi | 5 | 0.1 | 64.1 |
+| African Avg. |   |   |   |   **69.3** |
