@@ -233,8 +233,7 @@ class BertEmbeddings(nn.Module):
         assert token_type_ids!=None
         seq_length = 128
         batch_size = token_type_ids.shape[0]
-        #pdb.set_trace()
-        num_adapters = input_ids.shape[1]-2*seq_length
+        num_adapters = input_ids.shape[1] - 2*seq_length
         if input_ids.shape[1] != seq_length:
             input_ids, lang_ids, adap_ids = torch.split(input_ids, [seq_length,seq_length,num_adapters], 1)
             assert(input_ids.shape[0] == batch_size)

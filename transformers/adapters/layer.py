@@ -7,7 +7,7 @@ from torch import nn
 from .composition import AdapterCompositionBlock, BatchSplit, Fuse, Parallel, Split, Stack
 from .configuration import AdapterConfig
 from .context import AdapterSetup, ForwardContext
-from .modeling import Adapter, BertFusion , BertFusionGermanic, BertFusionSlavic, ParallelAdapter
+from .modeling import Adapter, BertFusion, ParallelAdapter, BertFusionGermanic, BertFusionSlavic
 import pdb
 
 class AdapterLayerBase(ABC, nn.Module):
