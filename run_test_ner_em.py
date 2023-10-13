@@ -562,8 +562,6 @@ def main():
   
   load_lang_adapter = args.predict_lang_adapter
   model.model_name = args.model_name_or_path
-  # model, task_name = setup_adapter(args, adapter_args, model, load_adapter=load_adapter, load_lang_adapter=load_lang_adapter, config=config)
-  #cpg_name = "cpg"
   task_name="ner"
   load_adapter = best_checkpoint + "/" + task_name
   print(load_adapter)
@@ -586,7 +584,6 @@ def main():
   #logging.info("loading lang adpater {}".format(adapter_args.load_lang_adapter))
   # resolve the language adapter config
   if args.madx2:
-    #pdb.set_trace()
     lang_adapter_config = AdapterConfig.load(
         adapter_args.lang_adapter_config,
         non_linearity=adapter_args.lang_adapter_non_linearity,
@@ -607,7 +604,7 @@ def main():
   pdb.set_trace()
   for language in languages:
     print(language)
-    lang_adapter_name = model.load_adapter("LAs/"+language.split("_")[0]+"/")
+    lang_adapter_name = model.load_adapter("LAs/"+language)
     lang_adapter_names.append(lang_adapter_name)
 
   fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
