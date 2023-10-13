@@ -1,3 +1,4 @@
 dump/
 predictions/
 ckpt/
+*_zgul*

@@ -22,8 +22,6 @@ OUT_DIR=${6:-"$REPO/outputs/"}
 export CUDA_VISIBLE_DEVICES=$GPU
 
 TASK='udpos'
-#LANGS="gsw"
-#LANGS="be,uk,bg"
 LANGS=$1
 TRAIN_LANGS="en,is,de"
 
@@ -32,8 +30,7 @@ MAX_LENGTH=128
 LR=1e-4
 BPE_DROP=0
 ADAPTER_LANG="en,is,de"
-#ADAPTER_LANG="en,ru,cs"
-LANG_ADAPTER_NAME="en/wiki@ukp,am/wiki@ukp,sw/wiki@ukp"
+LANG_ADAPTER_NAME="en/wiki@ukp,is/wiki@ukp,de/wiki@ukp"
 LC=""
 if [ $MODEL == "bert-base-multilingual-cased" ]; then
   MODEL_TYPE="bert"
@@ -52,19 +49,12 @@ else
   GRAD_ACC=4
 fi
 
-DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/ours"
+DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/"
 SEED=1
 
 RF=$4
-OUTPUT_DIR="ckpt/germanic/bert-base-multilingual-cased-LR5e-5-epoch10-MaxLen128-BS32-TrainLangen,is,de-Rf3_en,is,de_s1_ours_1.0/checkpoint-best-5/"
-#OUTPUT_DIR="submission_latest/slavic/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,ru,cs-Rf3_en,ru,cs_s1_ours_layerwise_dot/checkpoint-best-5/"
-#OUTPUT_DIR="output/udpos/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,is,de-Rf3_en,is,de_s42_final/checkpoint-best-5/"
-#OUTPUT_DIR="output/udpos/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,is,de-Rf3_en,is,de_s42_slavic_latest/checkpoint-best-5/"
-#OUTPUT_DIR="output/udpos/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,is,de-Rf3_en,is,de_s42_maxpool/checkpoint-best-5/"
-#OUTPUT_DIR="output/mlm/shiva/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf${RF}_en_conll,am,sw,wo_s42_zgul_load_${LANGS}/checkpoint-best-10/"
-#OUTPUT_DIR="output/mlm/masa/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf4_en_conll,am,sw,wo_s42_lanvec_plus_load_${LANGS}_mlm/checkpoint-best-10/"
-OUTFILE="$2_$3_masa_tied.txt"
-python run_test_pos_em.py \
+OUTPUT_DIR="ckpt/germanic/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,is,de-Rf3_en,is,de_s42_zgul/checkpoint-best-5/"
+python scripts/run_test_pos_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
   --data_dir $DATA_DIR \
@@ -90,7 +80,6 @@ python run_test_pos_em.py \
   --lang_adapter_config pfeiffer \
   --language $ADAPTER_LANG \
   --l2v \
-  --outfile $OUTFILE \
   --calc_step $2 \
   --emea_lr $3 \
   --load_lang_adapter $LANG_ADAPTER_NAME \
