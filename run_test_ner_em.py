@@ -630,40 +630,14 @@ def main():
   #pdb.set_trace()
   for language in languages:
     print(language)
-    if args.zgul_plus: 
-      pdb.set_trace() 
-      if language.startswith("en"):
-        #pdb.set_trace()
-        if "25per" in args.output_dir:
-          pdb.set_trace()
-          lang_adapter_name = model.load_adapter("hpc_mlm/LA/LAs/25per_"+args.predict_langs+"/mlm/", load_as=language.split("_")[0])
-        elif "50per" in args.output_dir:
-          pdb.set_trace()
-          lang_adapter_name = model.load_adapter("hpc_mlm/LA/LAs/50per_"+args.predict_langs+"/mlm/", load_as=language.split("_")[0])         
-        else:
-          pdb.set_trace()
-          lang_adapter_name = model.load_adapter("LAs/"+args.predict_langs+"/", load_as=language.split("_")[0])
-        #lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language.split("_")[0]+"/")
-        lang_adapter_names.append(lang_adapter_name)
-      else:
-        lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language.split("_")[0]+"/")
-        lang_adapter_names.append(lang_adapter_name)
-    else:
-      lang_adapter_name = model.load_adapter("/".join(load_adapter.split("/")[:-1])+language.split("_")[0]+"/")
-      lang_adapter_names.append(lang_adapter_name)
-      #pdb.set_trace()
+    lang_adapter_name = model.load_adapter("LAs/"+language.split("_")[0]+"/")
+    lang_adapter_names.append(lang_adapter_name)
 
-  #adapter_setup_ = Fuse('en','hi','ar')
   fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
   model.load_adapter_fusion(fusion_path_)
-  #pdb.set_trace()
   model.load_adapter(load_adapter)
-  #model.train_adapter_final([cpg_name, task_name], lang_adapter_names)
-  #model.train_adapter_fusion_TA([task_name], lang_adapter_names)
-  #model.set_active_adapters([lang_adapter_names, [cpg_name,task_name]])
   model.set_active_adapters([lang_adapter_names, task_name])
   adap_ids = torch.tensor([LANG2ID[it] for it in lang_adapter_names])
-  #pdb.set_trace()
   model.to(args.device)
   output_test_results_file = os.path.join(args.output_dir, "test_results.txt")
   with open(output_test_results_file, "a") as result_writer:
