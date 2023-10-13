@@ -607,7 +607,7 @@ def main():
   #pdb.set_trace()
   for language in languages:
     print(language)
-    lang_adapter_name = model.load_adapter("LAs/"+language.split("_")[0]+"/")
+    lang_adapter_name = model.load_adapter("LAs/"+language)
     lang_adapter_names.append(lang_adapter_name)
 
   fusion_path_ = "/".join(load_adapter.split("/")[:-1])+"/"+",".join(lang_adapter_names)
