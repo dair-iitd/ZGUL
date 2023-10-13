@@ -232,19 +232,7 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     #pdb.set_trace()
     outputs, adapter_weights, curr_entr = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
     entr_list.append(curr_entr)
-    # for i in range(12):
-    #   x,y = torch.split(adapter_weights[i],batch_size_,0)
-    #   if i not in weights_dict_fus:
-    #     weights_dict_fus[i] = []
-    #   if i not in weights_dict_l2v:
-    #     weights_dict_l2v[i] = []
-    #   #pdb.set_trace()
-    #   weights_dict_fus[i] += [it for it in x]
-    #   weights_dict_l2v[i] += [it for it in y]
-    #   #torch.save(y[0], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
     tmp_eval_loss, logits = outputs[:2]
-    #print([(adapter_weights[it][0][0],adapter_weights[it][1][0]) for it in range(12)])
-    #for it in range(12): print(adapter_weights[it][1][0], adapter_weights[it][1][-1])
     if args.n_gpu > 1:
       # mean() to average on multi-gpu parallel evaluating
       tmp_eval_loss = tmp_eval_loss.mean()
@@ -257,10 +245,6 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     else:
       preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
       out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
-  # torch.save(masks, "{}_masks_em.ckpt".format(lang))
-  # for i in range(12):
-  #  torch.save(weights_dict_l2v[i], "{}_l2v_em_l{}.ckpt".format(lang,str(i)))
-  #  torch.save(weights_dict_fus[i], "{}_fusion_em_l{}.ckpt".format(lang,str(i)))
   if nb_eval_steps == 0:
     results = {k: 0 for k in ["loss", "precision", "recall", "f1"]}
   else:
@@ -314,13 +298,6 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
   with open(str(args.calc_step)+"_"+str(args.emea_lr)+"_"+lang+"_zgul.txt","a") as f:
     write_st = args.output_dir+" "+lang+" "+str(results["f1"])+"\n"
     f.write(write_st)
-
-  #with open(lang+"_"+str(args.emea_lr)+"_"+str(args.calc_step)+"_predictions.txt", "w") as f:
-  #  for g,p in zip(out_label_list,preds_list):
-  #    for x,y in zip(g,p):
-  #      f.write(x+"\t"+y+"\n")
-  #    f.write("\n")
-  #pdb.set_trace()
   return results, preds_list
 
 
