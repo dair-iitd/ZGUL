@@ -51,14 +51,11 @@ else
   GRAD_ACC=4
 fi
 
-DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/ours"
+DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/"
 SEED=1
 
 RF=$4
-OUTPUT_DIR="ckpt/indic/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,hi,bn,ur-Rf3_en_ner,hi,bn,ur_s42_zgul_slavic/checkpoint-best-10/"
-#OUTPUT_DIR="output/mlm/shiva/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf${RF}_en_conll,am,sw,wo_s42_zgul_load_${LANGS}/checkpoint-best-10/"
-#OUTPUT_DIR="output/mlm/masa/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf4_en_conll,am,sw,wo_s42_lanvec_plus_load_${LANGS}_mlm/checkpoint-best-10/"
-OUTFILE="$2_$3_masa_tied.txt"
+OUTPUT_DIR="ckpt/indic/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,hi,bn,ur-Rf3_en_ner,hi,bn,ur_s42_zgul/checkpoint-best-10/"
 python run_test_ner_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
@@ -85,7 +82,6 @@ python run_test_ner_em.py \
   --lang_adapter_config pfeiffer \
   --language $ADAPTER_LANG \
   --l2v \
-  --outfile $OUTFILE \
   --calc_step $2 \
   --emea_lr $3 \
   --load_lang_adapter $LANG_ADAPTER_NAME \

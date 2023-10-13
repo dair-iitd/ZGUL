@@ -604,7 +604,7 @@ def main():
   #adapter_names = adapter_args.load_lang_adapter.split(",")
   #assert len(languages) == len(adapter_names)
   lang_adapter_names = []
-  #pdb.set_trace()
+  pdb.set_trace()
   for language in languages:
     print(language)
     lang_adapter_name = model.load_adapter("LAs/"+language.split("_")[0]+"/")
