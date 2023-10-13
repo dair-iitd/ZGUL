@@ -87,118 +87,6 @@ def isNormal(tensor_list):
       FLAG = False
   return FLAG
 
-# def test_emea_global(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights):
-#   #pdb.set_trace()
-#   calc_step_ = args.calc_step
-#   emea_lr_ = args.emea_lr
-#   #pdb.set_trace()
-#   batch_, max_len_ = adapter_weights[0].shape[0]//2, adapter_weights[0].shape[1]
-#   assert isNormal(adapter_weights)
-#   for step_ in range(calc_step_):
-#     # for layer_w in adapter_weights:
-#     #   try:
-#     #     layer_w.requires_grad = True
-#     #   except:
-#     #     pdb.set_trace()
-#     #pdb.set_trace()
-#     #model.set_active_adapters([lang_adapter_names, [task_name]])
-#     #inputs["adapter_names"] = [lang_adapter_names, [task_name]]
-#     #pdb.set_trace()
-#     for w in adapter_weights: 
-#       #pdb.set_trace()
-#       try:
-#         assert w.requires_grad == True
-#       except:  
-#         w.requires_grad = True
-    
-#     w1_, w2_ = [],[]
-#     for it in adapter_weights:
-#       #pdb.set_trace()
-#       z1,z2=torch.split(it,batch_,0)
-#       w1_.append(z1)
-#       w2_.append(z2)
-
-#     adapter_weights1 = [w[0] for w in w1_]
-#     global_weights = [weight[0][0] for weight in w2_]
-#     adapter_weights2 = [w.unsqueeze(0).repeat(128,1) for w in global_weights]
-    
-
-#     for w1, w2 in zip(adapter_weights1, adapter_weights2): 
-#       #pdb.set_trace()
-#       try:
-#         assert w1.requires_grad == True and w2.requires_grad == True
-#       except:  
-#         w1.requires_grad = True
-#         w2.requires_grad = True
-
-#     for w in global_weights: 
-#       #pdb.set_trace()
-#       try:
-#         assert w.requires_grad == True
-#       except:  
-#         w.requires_grad = True
-#     #pdb.set_trace()
-#     if step_ > 0:
-#       # for w in adapter_weights: 
-#       #   w[0].requires_grad = True
-#       #   w[1].requires_grad = True
-#       #pdb.set_trace()
-      
-#       #pdb.set_trace()
-#       normed_adapter_weights1 = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights1]
-#       normed_adapter_weights2 = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights2]
-#       normed_adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(normed_adapter_weights1, normed_adapter_weights2)]
-#       #adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(adapter_weights1, adapter_weights2)]
-#       try:
-#         assert isNormal(normed_adapter_weights)
-#       except:
-#         pdb.set_trace()
-#       inputs["adapter_weights"] = normed_adapter_weights
-#       #pdb.set_trace()
-#     else:
-#       #adapter_weights_ = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(adapter_weights1, adapter_weights2)]
-#       #adapter_weights[0].requires_grad = True
-#       adapter_weights_cpy = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(adapter_weights1, adapter_weights2)]
-#       assert isNormal(adapter_weights_cpy)
-#       inputs["adapter_weights"] = adapter_weights_cpy
-      
-#     #pdb.set_trace()
-#     outputs, _ = model(**inputs)
-#     #loss, logits, orig_sequence_output = outputs[:3]
-#     kept_logits = outputs[-1]
-#     #pdb.set_trace()
-#     #entropy = torch.nn.functional.softmax(kept_logits, dim=1)*torch.nn.functional.log_softmax(kept_logits, dim=1)
-#     entropy = torch.nn.functional.softmax(kept_logits, dim=-1)*torch.nn.functional.log_softmax(kept_logits, dim=-1)
-#     entropy = -entropy.sum() / kept_logits.size(0)
-#     #pdb.set_trace()
-#     #adapter_weights[0].requires_grad=True
-#     #pdb.set_trace()
-#     try:
-#       grads1 = torch.autograd.grad(entropy, adapter_weights1, retain_graph=True)
-#       grads2 = torch.autograd.grad(entropy, global_weights)
-#     except:
-#       pdb.set_trace()
-
-#     #pdb.set_trace()
-#     for i in range(12):
-#       adapter_weights1[i] = adapter_weights1[i].data - emea_lr_*grads1[i].data
-#       global_weights[i] = global_weights[i].data - emea_lr_*grads2[i].data
-#       adapter_weights2[i] = global_weights[i].unsqueeze(0).repeat(128,1)
-
-#     adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(adapter_weights1, adapter_weights2)]
-
-  
-#   if calc_step_ > 0:
-#     normed_adapter_weights = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights]
-#     assert isNormal(normed_adapter_weights)
-#     inputs["adapter_weights"] = normed_adapter_weights
-#   else:
-#     assert isNormal(adapter_weights)
-#     inputs["adapter_weights"] = adapter_weights
-#   outputs, adapter_weights  = model(**inputs)
-#   #pdb.set_trace()
-#   return outputs, adapter_weights
-
 def get_entropy(outputs, mode='sum'):
   final_kept_logits = outputs[-1]
   final_entropy = torch.nn.functional.softmax(final_kept_logits, dim=-1)*torch.nn.functional.log_softmax(final_kept_logits, dim=-1)
@@ -215,33 +103,17 @@ def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter
   #pdb.set_trace()
   batch_, max_len_ = adapter_weights[0].shape[0]//2, adapter_weights[0].shape[1]
   for step_ in range(calc_step_):
-    # for layer_w in adapter_weights:
-    #   try:
-    #     layer_w.requires_grad = True
-    #   except:
-    #     pdb.set_trace()
-    #pdb.set_trace()
-    #model.set_active_adapters([lang_adapter_names, [task_name]])
-    #inputs["adapter_names"] = [lang_adapter_names, [task_name]]
-    #pdb.set_trace()
     for w in adapter_weights: 
-      #pdb.set_trace()
       try:
         assert w.requires_grad == True
       except:  
         w.requires_grad = True
     if step_ > 0:
-      # for w in adapter_weights: 
-      #   w[0].requires_grad = True
-      #   w[1].requires_grad = True
-      #pdb.set_trace()
       w1_, w2_ = [],[]
       for it in adapter_weights:
-        #pdb.set_trace()
         z1,z2=torch.split(it,batch_,0)
         w1_.append(z1)
         w2_.append(z2)
-      #pdb.set_trace()
       normed_adapter_weights1 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w1_]
       normed_adapter_weights2 = [torch.nn.functional.softmax(w[0], dim=-1) for w in w2_]
       normed_adapter_weights = [torch.cat((z1.unsqueeze(0),z2.unsqueeze(0)),0) for z1,z2 in zip(normed_adapter_weights1, normed_adapter_weights2)]
@@ -249,39 +121,23 @@ def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter
         assert not isNormal(adapter_weights) and isNormal(normed_adapter_weights)
       except:
         pass
-        #pdb.set_trace()
       inputs["adapter_weights"] = normed_adapter_weights
-      #pdb.set_trace()
     else:
-      #adapter_weights[0].requires_grad = True
       assert isNormal(adapter_weights)
       inputs["adapter_weights"] = adapter_weights
       
-    #pdb.set_trace()
     outputs, _ = model(**inputs)
-    #loss, logits, orig_sequence_output = outputs[:3]
     kept_logits = outputs[-1]
     #pdb.set_trace()
-    # For Germanic POS, use the following - 
-    #entropy = torch.nn.functional.softmax(kept_logits, dim=1)*torch.nn.functional.log_softmax(kept_logits, dim=1)
-    #For NER, use following
     entropy = torch.nn.functional.softmax(kept_logits, dim=-1)*torch.nn.functional.log_softmax(kept_logits, dim=-1)
     entropy = -entropy.sum() / kept_logits.size(0)
-    print(entropy)
-    #adapter_weights[0].requires_grad=True
-    #pdb.set_trace()
+    #print(entropy)
     try:
-      #grads = torch.autograd.grad(entropy, adapter_weights[1:])
       grads = torch.autograd.grad(entropy, adapter_weights)
     except:
       pdb.set_trace()
-    #pdb.set_trace()
     for i in range(12):
-      #adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i-1].data
       adapter_weights[i] = adapter_weights[i].data - emea_lr_*grads[i].data
-    #adapter_weights = deepcopy(normed_adapter_weights)
-    #pdb.set_trace()
-  #pdb.set_trace()
   if calc_step_ > 0:
     normed_adapter_weights = [torch.nn.functional.softmax(w, dim=-1) for w in adapter_weights]
     inputs["adapter_weights"] = normed_adapter_weights
@@ -289,7 +145,6 @@ def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter
     inputs["adapter_weights"] = adapter_weights
 
   outputs, adapter_weights  = model(**inputs)
-  #pdb.set_trace()
   ret_entropy = get_entropy(outputs, 'avg')
   print(ret_entropy)
   return outputs, adapter_weights, ret_entropy
