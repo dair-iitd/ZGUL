@@ -144,10 +144,10 @@ def test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter
   else:
     inputs["adapter_weights"] = adapter_weights
 
-  outputs, adapter_weights  = model(**inputs)
-  ret_entropy = get_entropy(outputs, 'avg')
-  print(ret_entropy)
-  return outputs, adapter_weights, ret_entropy
+  outputs, _  = model(**inputs)
+  #ret_entropy = get_entropy(outputs, 'avg')
+  #print(ret_entropy)
+  return outputs
 
 
 def classification_report_csv(args, report, lang):
@@ -230,7 +230,7 @@ def evaluate(args, model, tokenizer, labels, pad_token_label_id, mode, prefix=""
     #curr_entr = get_entropy(outputs)
     assert len(adapter_weights)==12 and adapter_weights[0] is not None
     #pdb.set_trace()
-    outputs, adapter_weights, curr_entr = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
+    outputs = test_emea(args, inputs, model, batch, lang_adapter_names, task_name, adapter_weights)
     entr_list.append(curr_entr)
     tmp_eval_loss, logits = outputs[:2]
     if args.n_gpu > 1:
