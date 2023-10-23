@@ -1,4 +1,9 @@
-# ZGUL
+## Official Code for "ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters"
+
+### 1. Environment Setup
+TBD
+
+### 2. ZGUL Inference
 EM Steps (T) and LR (lr) for various languages (tuned on closest language dev set) along with Test F1 scores for each target -  
 
 | Target lang | Closest source lang | T | lr | Target F1 (test) | 
@@ -22,3 +27,12 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | As      | Bn | 5 | 0.1 | 74.4 |
 | Bh      | Hi | 5 | 0.1 | 64.1 |
 | Indic Avg. |   |   |   |   **69.3** |
+
+### 3. Training Instructions
+TBD
+
+### 4. Trained model checkpoint
+[link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
+
+### Cite
+TBD
