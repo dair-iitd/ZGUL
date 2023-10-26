@@ -35,11 +35,12 @@ TBD
 [link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
 
 ### Cite
-@misc{rathore2023zgul,
-      title={ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters}, 
-      author={Vipul Rathore and Rajdeep Dhingra and Parag Singla and Mausam},
-      year={2023},
-      eprint={2310.16393},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+The codebase is a part of the work [ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters](https://arxiv.org/abs/2310.16393). If you use or extend our work, please cite the following paper:
+```
+@inproceedings{rathore2023zgul,
+  title={ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters},
+  author={Rathore, Vipul and Dhingra, Rajdeep and Singla, Parag and Mausam},
+  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, {EMNLP} 2023 (Volume 1: Long Papers)},
+  year={2023}
 }
+```
