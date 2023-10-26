@@ -35,4 +35,11 @@ TBD
 [link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
 
 ### Cite
-TBD
+@misc{rathore2023zgul,
+      title={ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters}, 
+      author={Vipul Rathore and Rajdeep Dhingra and Parag Singla and Mausam},
+      year={2023},
+      eprint={2310.16393},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
