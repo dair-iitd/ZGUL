@@ -29,7 +29,18 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Indic Avg. |   |   |   |   **69.3** |
 
 ### 3. Training Instructions
-TBD
+First copy train* files from `scripts' directory to current one
+# Germanic
+bash train_udpos.sh en,is,de en,is,de
+
+# Slavic
+bash train_udpos.sh en,ru,cs en,ru,cs
+
+# African
+bash train_masa.sh en,amh,swa,wol en_conll,am,sw,wo
+
+# Indic
+bash train_panx.sh en,hi,bn,ur en_ner,hi,bn,ur
 
 ### 4. Trained model checkpoint
 [link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
