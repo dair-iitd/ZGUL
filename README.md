@@ -37,7 +37,7 @@ bash infer_germanic.sh
 * Slavic
 ```
 bash infer_slavic.sh
-
+```
 * African
 ```
 bash infer_african.sh
