@@ -3,7 +3,7 @@
 ### 1. Environment Setup
 TBD
 
-### 2. ZGUL Inference
+### 2. Zero-shot Inference
 EM Steps (T) and LR (lr) for various languages (tuned on closest language dev set) along with Test F1 scores for each target -  
 
 | Target lang | Closest source lang | T | lr | Target F1 (test) | 
@@ -28,8 +28,43 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 | Bh      | Hi | 5 | 0.1 | 64.1 |
 | Indic Avg. |   |   |   |   **69.3** |
 
+First copy infer* files from `scripts' directory to current one
+
+* Germanic
+```
+bash infer_germanic.sh
+```
+* Slavic
+```
+bash infer_slavic.sh
+```
+* African
+```
+bash infer_african.sh
+```
+* Indic
+```
+bash infer_indic.sh
+```
 ### 3. Training Instructions
-TBD
+First copy train* files from `scripts' directory to current one
+
+* Germanic
+```
+bash train_udpos.sh en,is,de en,is,de
+```
+* Slavic
+```
+bash train_udpos.sh en,ru,cs en,ru,cs
+```
+* African
+```
+bash train_masa.sh en,amh,swa,wol en_conll,am,sw,wo
+```
+* Indic
+```
+bash train_panx.sh en,hi,bn,ur en_ner,hi,bn,ur
+```
 
 ### 4. Trained model checkpoint
 [link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
