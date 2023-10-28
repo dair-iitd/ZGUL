@@ -200,17 +200,7 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
           tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
           tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
           logging_loss = tr_loss
-        #pdb.set_trace()
-        # if global_step == 1:
-        #   output_dir = os.path.join(args.output_dir, "checkpoint-best-0")
-        #   if not os.path.exists(output_dir):
-        #     os.makedirs(output_dir)
-        #   model_to_save = model.module if hasattr(model, "module") else model
-        #   model_to_save.save_all_adapters(output_dir)
-        #   model_to_save.save_all_adapter_fusions(output_dir)
-        #   model_to_save.save_pretrained(output_dir)
-        #   tokenizer.save_pretrained(output_dir)
-
+          
         if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
           if args.save_only_best_checkpoint:
             result, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev", prefix=global_step, lang=args.train_langs, adap_ids=adap_ids, lang2id=lang2id, lang_adapter_names=lang_adapter_names, task_name=task_name)
@@ -229,14 +219,10 @@ def train(args, train_dataset, model, tokenizer, labels, pad_token_label_id, lan
               model_to_save = model.module if hasattr(model, "module") else model
               #pdb.set_trace()
               if args.do_save_adapters:
-                #print("PASS1")
                 model_to_save.save_all_adapters(output_dir)
               if args.do_save_adapter_fusions:
-                #print("PASS2")
                 model_to_save.save_all_adapter_fusions(output_dir)
-              #if args.do_save_full_model:
-                #print("PASS3")
-                #model_to_save.save_pretrained(output_dir)
+              
               model_to_save.save_pretrained(output_dir)
               tokenizer.save_pretrained(output_dir)
               torch.save(args, os.path.join(output_dir, "training_args.bin"))
