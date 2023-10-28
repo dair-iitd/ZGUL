@@ -30,7 +30,7 @@ EM Steps (T) and LR (lr) for various languages (tuned on closest language dev se
 
 ### 3. Training Instructions
 First copy train* files from `scripts' directory to current one
-# Germanic
+##### Germanic
 bash train_udpos.sh en,is,de en,is,de
 
 # Slavic
