@@ -54,7 +54,7 @@ SEED=1
 
 RF=$4
 OUTPUT_DIR="ckpt/germanic/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,is,de-Rf3_en,is,de_s42_zgul/checkpoint-best-5/"
-python scripts/run_test_pos_em.py \
+python third_party/run_test_pos_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
   --data_dir $DATA_DIR \

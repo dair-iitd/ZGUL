@@ -21,7 +21,9 @@ OUT_DIR=${6:-"$REPO/outputs/"}
 
 export CUDA_VISIBLE_DEVICES=$GPU
 
-TASK='masa'
+TASK='panx'
+#LANGS="gsw"
+#LANGS="be,uk,bg"
 LANGS=$1
 TRAIN_LANGS="en,is,de"
 
@@ -29,7 +31,7 @@ NUM_EPOCHS=1
 MAX_LENGTH=128
 LR=1e-4
 BPE_DROP=0
-ADAPTER_LANG="en_conll,am,sw,wo"
+ADAPTER_LANG="en_ner,hi,bn,ur"
 LANG_ADAPTER_NAME="en/wiki@ukp,am/wiki@ukp,sw/wiki@ukp"
 LC=""
 if [ $MODEL == "bert-base-multilingual-cased" ]; then
@@ -53,13 +55,13 @@ DATA_DIR="$DATA_DIR/${TASK}/${TASK}_processed_maxlen${MAX_LENGTH}/"
 SEED=1
 
 RF=$4
-OUTPUT_DIR="ckpt/african/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,amh,swa,wol-Rf${RF}_en,am,sw,wo_s42_zgul/checkpoint-best-10/"
-python scripts/run_test_ner_em.py \
+OUTPUT_DIR="ckpt/indic/bert-base-multilingual-cased-LR1e-4-epoch10-MaxLen128-TrainLangen,hi,bn,ur-Rf3_en_ner,hi,bn,ur_s42_zgul/checkpoint-best-10/"
+python third_party/run_test_ner_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
   --data_dir $DATA_DIR \
   --model_type $MODEL_TYPE \
-  --labels $DATA_DIR/labels.txt \
+  --labels $DATA_DIR/labels1.txt \
   --model_name_or_path $MODEL \
   --output_dir $OUTPUT_DIR \
   --max_seq_length  $MAX_LENGTH \

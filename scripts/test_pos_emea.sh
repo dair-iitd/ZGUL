@@ -54,7 +54,7 @@ SEED=1
 
 RF=$4
 OUTPUT_DIR="ckpt/slavic/bert-base-multilingual-cased-LR1e-4-epoch5-MaxLen128-TrainLangen,ru,cs-Rf3_en,ru,cs_s42_zgul/checkpoint-best-5/"
-python scripts/run_test_ner_em.py \
+python third_party/run_test_ner_em.py \
   --predict_save_prefix "" \
   --per_gpu_eval_batch_size  1 \
   --data_dir $DATA_DIR \
