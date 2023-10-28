@@ -44,3 +44,8 @@ The codebase is a part of the work [ZGUL: Zero-shot Generalization to Unseen Lan
   year={2023}
 }
 ```
+
+### Acknowledgements
+Our codebase is built upon [Adapterhub's](https://arxiv.org/abs/2007.07779). For more details on the transformers source code used, we refer the user to their [repository](https://github.com/adapter-hub/adapter-transformers/tree/master/src/transformers).
+
+For more details on the dataset and training scripts used, we refer the user to [Google xtreme](https://github.com/google-research/xtreme) repo.
