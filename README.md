@@ -48,14 +48,23 @@ bash train_panx.sh en,hi,bn,ur en_ner,hi,bn,ur
 [link](https://drive.google.com/drive/folders/1ihkwheV6x2tKEPAxRoczqATIiXjJ7PDY?usp=sharing)
 
 ### Cite
-The codebase is a part of the work [ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters](https://arxiv.org/abs/2310.16393). If you use or extend our work, please cite the following paper:
+The codebase is a part of the work [ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters](https://aclanthology.org/2023.emnlp-main.431/). If you use or extend our work, please cite the following paper:
 ```
-@inproceedings{rathore2023zgul,
-  title={ZGUL: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters},
-  author={Rathore, Vipul and Dhingra, Rajdeep and Singla, Parag and Mausam},
-  booktitle={Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, {EMNLP} 2023 (Volume 1: Long Papers)},
-  year={2023}
+@inproceedings{rathore-etal-2023-zgul,
+    title = "{ZGUL}: Zero-shot Generalization to Unseen Languages using Multi-source Ensembling of Language Adapters",
+    author = "Rathore, Vipul  and
+      Dhingra, Rajdeep  and
+      Singla, Parag  and
+      {Mausam}",
+    booktitle = "Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing",
+    month = dec,
+    year = "2023",
+    address = "Singapore",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2023.emnlp-main.431",
+    pages = "6969--6987",
 }
+
 ```
 
 ### Acknowledgements
